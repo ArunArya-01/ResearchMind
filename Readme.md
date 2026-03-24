@@ -1,67 +1,72 @@
-# 🔬 ResearchMind  
-### Autonomous Cross-Modal GraphRAG for Hypothesis Synthesis  
+# ResearchMind
 
-**🚀 Built for Hackverse 2026 | Redefining Scientific Discovery with AI**
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Built for Hackverse 2026](https://img.shields.io/badge/Built%20for-Hackverse%202026-brightgreen.svg)](https://hackverse.com)
+
+### Autonomous Cross-Modal GraphRAG for Hypothesis Synthesis
+
+**Built for Hackverse 2026 | Redefining Scientific Discovery with AI**
 
 ---
 
-## 🌌 Vision
+## Vision
 
 > **Most AI summarizes knowledge. ResearchMind creates it.**
 
 ResearchMind is an **agentic AI research system** that goes beyond retrieval and summarization to generate **novel, testable scientific hypotheses**.
 
-It identifies **“White Space” in research** — unexplored intersections between domains — by combining:
+It identifies **"White Space" in research** — unexplored intersections between domains — by combining:
 
-- 👁️ Cross-modal understanding (text + charts + tables)  
-- 🕸️ Knowledge Graph reasoning (GraphRAG)  
-- ⚔️ Multi-agent debate (Visionary vs Skeptic)  
+- Cross-modal understanding (text + charts + tables)
+- Knowledge Graph reasoning (GraphRAG)
+- Multi-agent debate (Visionary vs Skeptic)
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 👁️ Cross-Modal "Vision" Ingestion
+### Cross-Modal "Vision" Ingestion
 - Uses **Gemini 1.5 Flash**
 - Understands:
-  - Graphs 📈  
-  - Tables 📊  
-  - Scientific diagrams  
+  - Graphs
+  - Tables
+  - Scientific diagrams
 
 ---
 
-### 🕸️ Multi-Hop GraphRAG Engine
+### Multi-Hop GraphRAG Engine
 - Built with **NetworkX**
 - Constructs dynamic Knowledge Graphs
-- Detects **“Islands of Knowledge”**
+- Detects **"Islands of Knowledge"**
 - Triggers **Discovery Events**
 
 ---
 
-### ⚔️ Adversarial Debate Protocol
-- **Visionary Agent** → proposes hypothesis  
-- **Skeptic Agent** → challenges it  
-- **Arbiter** → refines and scores  
+### Adversarial Debate Protocol
+- **Visionary Agent** → proposes hypothesis
+- **Skeptic Agent** → challenges it
+- **Arbiter** → refines and scores
 
 ---
 
-### 🧪 Deterministic Math Verification
-- Python sandbox execution  
+### Deterministic Math Verification
+- Python sandbox execution
 - Validates:
-  - Simulations  
-  - Mathematical consistency  
-  - Physical laws  
+  - Simulations
+  - Mathematical consistency
+  - Physical laws
 
 ---
 
-### 🔗 Auto-Citing Evidence Trace
+### Auto-Citing Evidence Trace
 - Each claim includes:
-  - Confidence Score  
-  - DOI / ArXiv references  
+  - Confidence Score
+  - DOI / ArXiv references
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |------|-----------|
@@ -75,53 +80,53 @@ It identifies **“White Space” in research** — unexplored intersections bet
 
 ---
 
-## ⚙️ System Pipeline
+## System Pipeline
 
-### 1️⃣ Ingestion Stage
+### 1. Ingestion Stage
 - Fetch papers via **Semantic Scholar API**
 - Extract:
-  - Text  
-  - Figures  
-  - Tables  
+  - Text
+  - Figures
+  - Tables
 
 ---
 
-### 2️⃣ Mapping Stage
+### 2. Mapping Stage
 - Extract entities:
-  - Materials  
-  - Phenomena  
-  - Methods  
-- Build Knowledge Graph  
+  - Materials
+  - Phenomena
+  - Methods
+- Build Knowledge Graph
 
 ---
 
-### 3️⃣ Discovery Stage
-- Identify missing connections using graph traversal  
+### 3. Discovery Stage
+- Identify missing connections using graph traversal
 
-> Example:  
-> Material improves heat transfer + Device needs cooling  
-> → New research hypothesis  
-
----
-
-### 4️⃣ Synthesis Stage
-- Visionary proposes  
-- Skeptic critiques  
-- Arbiter finalizes  
+> Example:
+> Material improves heat transfer + Device needs cooling
+> → New research hypothesis
 
 ---
 
-### 5️⃣ Output
+### 4. Synthesis Stage
+- Visionary proposes
+- Skeptic critiques
+- Arbiter finalizes
+
+---
+
+### 5. Output
 Generates:
-- Research Proposal  
-- Hypothesis  
-- Methodology  
-- Simulation Results  
-- Citations  
+- Research Proposal
+- Hypothesis
+- Methodology
+- Simulation Results
+- Citations
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 ├── agents/
@@ -141,9 +146,9 @@ Generates:
 
 ---
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
-### 1️⃣ Clone Repo
+### 1. Clone Repo
 ```bash
 git clone https://github.com/your-username/ResearchMind.git
 cd ResearchMind
@@ -151,14 +156,14 @@ cd ResearchMind
 
 ---
 
-### 2️⃣ Install Dependencies
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-### 3️⃣ Environment Setup
+### 3. Environment Setup
 Create `.env` file:
 
 ```env
@@ -168,24 +173,24 @@ GROQ_API_KEY=your_groq_key
 
 ---
 
-### 4️⃣ Run Project
+### 4. Run Project
 ```bash
 python main.py --topic "Post-Quantum Cryptography"
 ```
 
 ---
 
-## 🎯 Use Cases
+## Use Cases
 
-- 🔬 Scientific discovery  
-- 💊 Drug research  
-- 🧪 Material science  
-- 🌍 Climate modeling  
-- 📄 AI-assisted research writing  
+- Scientific discovery
+- Drug research
+- Material science
+- Climate modeling
+- AI-assisted research writing
 
 ---
 
-## 🧠 Why It Matters
+## Why It Matters
 
 ResearchMind transforms:
 
@@ -195,39 +200,39 @@ Instead of summarizing existing research, it **creates new directions for scienc
 
 ---
 
-## 🏆 Hackathon Highlights
+## Hackathon Highlights
 
-- 🚀 Fully autonomous research pipeline  
-- 💸 Zero-cost architecture  
-- 🧠 Novel combination:
-  - GraphRAG  
-  - Multimodal AI  
-  - Agent debate  
-
----
-
-## 📌 Future Scope
-
-- Lab simulation integrations  
-- Reinforcement learning agents  
-- Collaborative research UI  
-- Patent generation  
+- Fully autonomous research pipeline
+- Zero-cost architecture
+- Novel combination:
+  - GraphRAG
+  - Multimodal AI
+  - Agent debate
 
 ---
 
-## 🤝 Contributing
+## Future Scope
 
-Pull requests are welcome.  
+- Lab simulation integrations
+- Reinforcement learning agents
+- Collaborative research UI
+- Patent generation
+
+---
+
+## Contributing
+
+Pull requests are welcome.
 Open an issue for major changes.
 
 ---
 
-## 📜 License
+## License
 
 MIT License
 
 ---
 
-## 💡 Tagline
+## Tagline
 
-> **"Don’t just search knowledge. Create it."**
+> **"Don't just search knowledge. Create it."**
