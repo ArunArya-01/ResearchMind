@@ -1,4 +1,4 @@
-# 🔬 HypotheSync
+# 🔬 ResearchMind
 
 **Autonomous Multi-Agent Framework for Scientific Hypothesis Generation**
 
