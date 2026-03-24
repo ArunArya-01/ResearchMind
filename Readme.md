@@ -1,9 +1,5 @@
 # ResearchMind
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Built for Hackverse 2026](https://img.shields.io/badge/Built%20for-Hackverse%202026-brightgreen.svg)](https://hackverse.com)
-
 ### Autonomous Cross-Modal GraphRAG for Hypothesis Synthesis
 
 **Built for Hackverse 2026 | Redefining Scientific Discovery with AI**
@@ -27,7 +23,7 @@ It identifies **"White Space" in research** — unexplored intersections between
 ## Key Features
 
 ### Cross-Modal "Vision" Ingestion
-- Uses **Gemini 1.5 Flash**
+- Uses **Gemini Flash Lite**
 - Understands:
   - Graphs
   - Tables
@@ -71,7 +67,7 @@ It identifies **"White Space" in research** — unexplored intersections between
 | Layer | Technology |
 |------|-----------|
 | Orchestration | CrewAI / LangGraph |
-| Multimodal AI | Gemini 1.5 Flash |
+| Multimodal AI | Gemini Flash lite |
 | Fast Inference | Groq (Llama 3.2) |
 | Graph Engine | NetworkX / PyVis |
 | Vector DB | ChromaDB |
@@ -200,39 +196,8 @@ Instead of summarizing existing research, it **creates new directions for scienc
 
 ---
 
-## Hackathon Highlights
-
-- Fully autonomous research pipeline
-- Zero-cost architecture
-- Novel combination:
-  - GraphRAG
-  - Multimodal AI
-  - Agent debate
-
----
-
-## Future Scope
-
-- Lab simulation integrations
-- Reinforcement learning agents
-- Collaborative research UI
-- Patent generation
-
----
-
-## Contributing
-
-Pull requests are welcome.
-Open an issue for major changes.
-
----
-
 ## License
 
 MIT License
 
 ---
-
-## Tagline
-
-> **"Don't just search knowledge. Create it."**
