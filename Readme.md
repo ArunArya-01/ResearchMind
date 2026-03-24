@@ -1,81 +1,233 @@
-# ResearchMind
+# 🔬 ResearchMind  
+### Autonomous Cross-Modal GraphRAG for Hypothesis Synthesis  
 
-**Autonomous Multi-Agent Framework for Scientific Hypothesis Generation**
-
-Built for **Hackverse 2026**
+**🚀 Built for Hackverse 2026 | Redefining Scientific Discovery with AI**
 
 ---
 
-## Overview
+## 🌌 Vision
 
-**ResearchMind** is an autonomous agentic system designed to accelerate scientific discovery. By utilizing a multi-agent orchestration layer, it moves beyond simple summarization to identify "white space" gaps in existing research and generate structured, evidence-backed hypotheses. It independently crawls repositories, synthesizes cross-domain data, and stress-tests every theory through an adversarial critique agent.
+> **Most AI summarizes knowledge. ResearchMind creates it.**
 
-The system combines state-of-the-art language models with intelligent information retrieval to create a comprehensive research analysis pipeline that produces actionable scientific insights.
+ResearchMind is an **agentic AI research system** that goes beyond retrieval and summarization to generate **novel, testable scientific hypotheses**.
 
-## Key Features
+It identifies **“White Space” in research** — unexplored intersections between domains — by combining:
 
-* **Autonomous Literature Mapping:** Scans scholarly databases (ArXiv, PubMed) to build a contextual knowledge graph of existing research.
-* **Gap Discovery Engine:** Identifies unexplored connections between disparate research fields using vector similarity and semantic analysis.
-* **Evidence-Backed Synthesis:** Every hypothesis includes direct citations, logical reasoning chains, and peer-reviewed references.
-* **Adversarial Critic Agent:** A dedicated agent that attempts to "debunk" the hypothesis to ensure scientific rigor, logical consistency, and practical feasibility.
-* **Researcher Dashboard:** A clean, intuitive UI to visualize the reasoning trace, examine evidence chains, and manage research proposals.
-* **Multi-Agent Orchestration:** Coordinated workflow between specialized agents (Researcher, Synthesizer, Critic) for comprehensive analysis.
-* **Extensible Architecture:** Easy to add new agents, data sources, or analysis modules.
+- 👁️ Cross-modal understanding (text + charts + tables)  
+- 🕸️ Knowledge Graph reasoning (GraphRAG)  
+- ⚔️ Multi-agent debate (Visionary vs Skeptic)  
 
-## How It Works
+---
 
-1. **Research Phase:** Autonomous agents scan multiple literature sources to gather relevant publications and data.
-2. **Synthesis Phase:** Cross-domain data is synthesized to identify gaps and potential research directions.
-3. **Hypothesis Generation:** Structured hypotheses are generated with full evidence chains and citations.
-4. **Critique Phase:** An adversarial agent reviews each hypothesis for logical soundness and feasibility.
-5. **Dashboard Presentation:** Results are visualized with reasoning traces for human researchers.
+## ✨ Key Features
 
-## Tech Stack
+### 👁️ Cross-Modal "Vision" Ingestion
+- Uses **Gemini 1.5 Flash**
+- Understands:
+  - Graphs 📈  
+  - Tables 📊  
+  - Scientific diagrams  
 
-* **Orchestration:** CrewAI, LangChain
-* **Backend:** FastAPI (Python)
-* **LLMs:** GPT-4o / Llama 3 (via Groq)
-* **Vector DB:** Pinecone / ChromaDB
-* **Frontend:** Vite, React, Tailwind CSS, Framer Motion
-* **Data Processing:** Python pandas, NumPy
+---
 
-## Project Structure
+### 🕸️ Multi-Hop GraphRAG Engine
+- Built with **NetworkX**
+- Constructs dynamic Knowledge Graphs
+- Detects **“Islands of Knowledge”**
+- Triggers **Discovery Events**
 
-```text
-├── agents/             # Agent logic (Researcher, Synthesizer, Critic)
-├── core/               # RAG pipelines and vector search
-├── api/                # FastAPI endpoints and routes
-├── web/                # Vite + Tailwind frontend application
-├── main.py             # System entry point
-└── README.md           # Project documentation
+---
+
+### ⚔️ Adversarial Debate Protocol
+- **Visionary Agent** → proposes hypothesis  
+- **Skeptic Agent** → challenges it  
+- **Arbiter** → refines and scores  
+
+---
+
+### 🧪 Deterministic Math Verification
+- Python sandbox execution  
+- Validates:
+  - Simulations  
+  - Mathematical consistency  
+  - Physical laws  
+
+---
+
+### 🔗 Auto-Citing Evidence Trace
+- Each claim includes:
+  - Confidence Score  
+  - DOI / ArXiv references  
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|------|-----------|
+| Orchestration | CrewAI / LangGraph |
+| Multimodal AI | Gemini 1.5 Flash |
+| Fast Inference | Groq (Llama 3.2) |
+| Graph Engine | NetworkX / PyVis |
+| Vector DB | ChromaDB |
+| Backend | FastAPI |
+| Frontend | Next.js + Framer Motion |
+
+---
+
+## ⚙️ System Pipeline
+
+### 1️⃣ Ingestion Stage
+- Fetch papers via **Semantic Scholar API**
+- Extract:
+  - Text  
+  - Figures  
+  - Tables  
+
+---
+
+### 2️⃣ Mapping Stage
+- Extract entities:
+  - Materials  
+  - Phenomena  
+  - Methods  
+- Build Knowledge Graph  
+
+---
+
+### 3️⃣ Discovery Stage
+- Identify missing connections using graph traversal  
+
+> Example:  
+> Material improves heat transfer + Device needs cooling  
+> → New research hypothesis  
+
+---
+
+### 4️⃣ Synthesis Stage
+- Visionary proposes  
+- Skeptic critiques  
+- Arbiter finalizes  
+
+---
+
+### 5️⃣ Output
+Generates:
+- Research Proposal  
+- Hypothesis  
+- Methodology  
+- Simulation Results  
+- Citations  
+
+---
+
+## 📂 Project Structure
+
+```
+├── agents/
+│   ├── visionary.py
+│   ├── skeptic.py
+│   └── validator.py
+│
+├── core/
+│   ├── graph_rag.py
+│   ├── vision_parse.py
+│   └── tools.py
+│
+├── api/
+├── web/
+└── main.py
 ```
 
-## Installation & Setup
+---
 
-Clone the repository and install dependencies:
+## 🚀 Setup & Installation
 
+### 1️⃣ Clone Repo
 ```bash
-git clone <repository-url>
+git clone https://github.com/your-username/ResearchMind.git
 cd ResearchMind
+```
+
+---
+
+### 2️⃣ Install Dependencies
+```bash
 pip install -r requirements.txt
 ```
 
-Configure your API keys for LLM providers and literature databases in the environment configuration.
+---
 
-## Usage
+### 3️⃣ Environment Setup
+Create `.env` file:
 
-Start the system with:
-
-```bash
-python main.py
+```env
+GOOGLE_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
 ```
 
-Access the researcher dashboard at `http://localhost:3000` (once the frontend server is running).
+---
 
-## Contributing
+### 4️⃣ Run Project
+```bash
+python main.py --topic "Post-Quantum Cryptography"
+```
 
-Contributions are welcome. Please follow the existing code structure and add tests for new features.
+---
 
-## License
+## 🎯 Use Cases
 
-This project is created for Hackverse 2026.
+- 🔬 Scientific discovery  
+- 💊 Drug research  
+- 🧪 Material science  
+- 🌍 Climate modeling  
+- 📄 AI-assisted research writing  
+
+---
+
+## 🧠 Why It Matters
+
+ResearchMind transforms:
+
+**Data → Knowledge → Insight → Hypothesis**
+
+Instead of summarizing existing research, it **creates new directions for science**.
+
+---
+
+## 🏆 Hackathon Highlights
+
+- 🚀 Fully autonomous research pipeline  
+- 💸 Zero-cost architecture  
+- 🧠 Novel combination:
+  - GraphRAG  
+  - Multimodal AI  
+  - Agent debate  
+
+---
+
+## 📌 Future Scope
+
+- Lab simulation integrations  
+- Reinforcement learning agents  
+- Collaborative research UI  
+- Patent generation  
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome.  
+Open an issue for major changes.
+
+---
+
+## 📜 License
+
+MIT License
+
+---
+
+## 💡 Tagline
+
+> **"Don’t just search knowledge. Create it."**
