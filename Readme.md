@@ -1,4 +1,4 @@
-# 🔬 Research Command Center (ResearchMind)
+# Research Command Center (ResearchMind)
 
 ![React](https://img.shields.io/badge/React-19-blue)
 ![Vite](https://img.shields.io/badge/Vite-8-purple)
@@ -9,7 +9,7 @@ A production-ready "Luxury Digital Lab" web application designed for high-fideli
 
 ---
 
-## 🚀 Features
+## Features
 
 ### Frontend (React + Vite + Tailwind CSS)
 - **Luxury Digital Lab Interface:** A highly stylized, futuristic dashboard featuring "Liquid Glass" panels, organic mesh gradients, and immersive micro-animations.
@@ -24,7 +24,7 @@ A production-ready "Luxury Digital Lab" web application designed for high-fideli
 
 ---
 
-## 📂 Project Architecture
+## Project Architecture
 
 ```
 HackVerse/
@@ -48,7 +48,7 @@ HackVerse/
 
 ---
 
-## 🛠️ Getting Started
+## Getting Started
 
 ### 1. Frontend Setup (React App)
 
@@ -98,12 +98,12 @@ The pipeline will query Semantic Scholar, download open-access PDFs, parse text 
 
 ---
 
-## 🧬 Design System & Aesthetic
+## Design System & Aesthetic
 The web application heavily emphasizes a futuristic sci-fi lab aesthetic. It uses custom CSS variables within `tailwind.config.js` and `index.css` to manage a specific palette of "surface", "on-surface", and translucent colors giving it a signature "glass-panel" look.
 
 Custom fonts (`font-display` and `font-mono`) and detailed SVG visualizers provide a deeply immersive UX out of the box.
 
 ---
 
-## 🤝 Next Steps
+## Next Steps
 This project currently serves as a front-end UI visualization space combined with an offline ingestion backend. Future goals involve connecting the React frontend directly to the Python output for live AI-driven analysis of the ingested papers.
