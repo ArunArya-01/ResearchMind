@@ -1,30 +1,73 @@
-# ResearchMind
+# React + TypeScript + Vite
 
-An AI research system that generates **novel, testable scientific hypotheses** by finding unexplored connections between research domains.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## What It Does
+Currently, two official plugins are available:
 
-ResearchMind identifies "white space" in research — gaps between fields where no one has explored yet. It reads scientific papers (text, charts, tables), builds a knowledge graph, and uses AI agents to debate and synthesize new hypotheses.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## How It Works
+## React Compiler
 
-1. **Ingest** - Fetch papers and extract text, figures, tables
-2. **Map** - Build a knowledge graph of concepts
-3. **Discover** - Find missing connections between domains
-4. **Synthesize** - AI agents propose and debate hypotheses
-5. **Verify** - Validate with mathematical simulations
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Quick Start
+## Expanding the ESLint configuration
 
-```bash
-pip install -r requirements.txt
-cp .env.example .env  # Add your API keys
-python main.py --topic "Your Research Topic"
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-## Tech Stack
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-- **AI**: Gemini (vision), Groq/Llama (reasoning)
-- **Graph**: NetworkX, ChromaDB
-- **Backend**: FastAPI
-- **Frontend**: Next.js
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
