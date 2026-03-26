@@ -1,13 +1,13 @@
 # ResearchMind
-> **Tagline:** *Bridging Scientific Gaps with Adversarial Swarm Intelligence.*
+> **Bridging Scientific Gaps with Adversarial Swarm Intelligence.**
 
 ---
 
-## 📌 Problem Statement
+## Problem Statement
 
 The modern scientific community suffers from extreme "information overload." The sheer volume of published papers prevents meaningful cross-domain innovation. As researchers specialize deeply into narrow niches, critical interdisciplinary connections are lost. These undiscovered connections—the white spaces where two unrelated scientific fields have not yet been bridged—are where the next major breakthroughs lie. 
 
-## 🚀 The Solution
+## The Solution
 
 ResearchMind is an AI-native Discovery Engine designed to actively map and bridge these scientific voids. It operates on a robust three-stage architecture:
 
@@ -20,7 +20,7 @@ ResearchMind is an AI-native Discovery Engine designed to actively map and bridg
 
 ---
 
-## 🧠 Core USP: Adversarial Swarm Logic
+## Core USP: Adversarial Swarm Logic
 
 The heart of ResearchMind is our **Adversarial Swarm (Agentic AI)**—a highly specialized structural debate system designed to eliminate LLM hallucinations and generate robust scientific hypotheses.
 
@@ -31,7 +31,7 @@ Together, they debate iteratively until a cohesive, battle-tested scientific pat
 
 ---
 
-## ⚡ Key Features
+## Key Features
 
 | Feature | Description |
 | :--- | :--- |
@@ -42,7 +42,7 @@ Together, they debate iteratively until a cohesive, battle-tested scientific pat
 
 ---
 
-## 🛠️ The Tech Stack
+## The Tech Stack
 
 ### Frontend & UI
 - **React (Vite) & TypeScript:** High-performance, scalable web interface.
@@ -57,7 +57,7 @@ Together, they debate iteratively until a cohesive, battle-tested scientific pat
 
 ---
 
-## ⚙️ Installation & Setup
+## Installation & Setup
 
 ### 1. Clone the Repository
 ```bash
