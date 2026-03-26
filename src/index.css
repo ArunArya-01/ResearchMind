@@ -1,0 +1,184 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Industrial Tech palette — Red, Black, White */
+    --background: 0 0% 4%;              /* #0A0A0A matte obsidian black */
+    --foreground: 0 0% 99%;             /* #FDFDFD bone white */
+
+    --card: 0 0% 99%;                   /* thick bone white glass */
+    --card-foreground: 0 0% 0%;         /* pure black */
+
+    --popover: 0 0% 99%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 354 96% 43%;             /* #D90429 crimson red */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 8%;              /* dark graphite */
+    --secondary-foreground: 0 0% 99%;
+
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 50%;
+
+    --accent: 354 96% 43%;             /* crimson accent */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 354 96% 43%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 354 96% 43%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --obsidian: 0 0% 4%;
+    --graphite: 0 0% 8%;
+    --bone: 0 0% 99%;
+    --pure-black: 0 0% 0%;
+    --crimson: 354 96% 43%;
+    --laser-red: 354 100% 50%;
+    --cyan-laser: 195 100% 50%;
+    --graph-green: 145 70% 50%;
+    --sky-blue: 200 85% 60%;
+    --deep-red: 0 80% 30%;
+
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'Space Grotesk', sans-serif;
+
+    --shadow-float: 0 30px 80px -20px hsl(0 0% 0% / 0.8);
+    --shadow-card: 0 8px 40px -8px hsl(0 0% 0% / 0.6);
+    --shadow-hover: 0 40px 100px -20px hsl(0 0% 0% / 0.9);
+
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 99%;
+    --sidebar-primary: 354 96% 43%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 0 0% 99%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 354 96% 43%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-display);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono) !important;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-xl;
+    background: hsl(var(--bone) / 0.98);
+    border: 1px solid hsl(0 0% 85%);
+    backdrop-filter: blur(40px);
+    box-shadow: var(--shadow-card);
+  }
+
+  .glass-dark {
+    @apply rounded-xl;
+    background: hsl(var(--graphite) / 0.95);
+    border: 1px solid hsl(0 0% 16%);
+    backdrop-filter: blur(40px);
+    box-shadow: var(--shadow-float);
+  }
+
+  .terminal-visionary {
+    @apply rounded-xl;
+    background: hsl(var(--graphite));
+    border: 1px solid hsl(0 0% 16%);
+  }
+
+  .terminal-skeptic {
+    @apply rounded-xl;
+    background: hsl(var(--graphite));
+    border: 1px solid hsl(0 0% 16%);
+  }
+
+  .laser-line {
+    background: linear-gradient(90deg, transparent, hsl(var(--crimson) / 0.7), transparent);
+    height: 1px;
+    position: absolute;
+    left: 0;
+    right: 0;
+  }
+
+  /* Refractive glint animation */
+  @keyframes glint {
+    0% { transform: translateX(-100%) rotate(15deg); }
+    100% { transform: translateX(200%) rotate(15deg); }
+  }
+
+  .glass-panel::after,
+  .glass-dark::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: inherit;
+  }
+
+  .glass-panel {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-panel::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 20%;
+    height: 200%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(0 0% 100% / 0.15),
+      transparent
+    );
+    transform: rotate(15deg);
+    animation: glint 6s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--obsidian));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 20%);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(0 0% 30%);
+}
