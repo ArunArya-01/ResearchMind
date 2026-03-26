@@ -1,9 +1,5 @@
 # Research Command Center (ResearchMind)
 
-A production-ready "Luxury Digital Lab" web application designed for high-fidelity research data synthesis and visualization. **Research Command Center** merges a sophisticated, futuristic UI with a robust Python backend that automates the ingestion, parsing, and analysis of academic papers.
-
----
-
 ## Features
 
 ### Frontend (React + Vite + Tailwind CSS)
