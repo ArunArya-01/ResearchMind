@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { motion } from "framer-motion";
 import FloatingPanel from "../components/FloatingPanel";
 import ParallaxContainer from "../components/ParallaxContainer";
 import { Rocket, ShieldAlert, FileText, Play, Loader2 } from "lucide-react";
@@ -122,11 +121,9 @@ const SynthesisLab = () => {
 
   return (
     <div className="min-h-screen pt-24 px-6 pb-12">
-      <ParallaxContainer intensity={2}>
+      <ParallaxContainer>
         <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+          <div
             className="mb-8 text-center"
           >
             <h1 className="text-bone font-display text-5xl font-bold tracking-tight mb-3">
@@ -135,26 +132,22 @@ const SynthesisLab = () => {
             <p className="text-bone/40 font-mono text-sm mb-6">
               Knowledge graph · Swarm debate · Final manuscript
             </p>
-            <motion.button
+            <button
               onClick={handleStartDiscovery}
-              whileHover={{ scale: 1.03, boxShadow: "0 0 30px hsl(354 96% 43% / 0.5)" }}
-              whileTap={{ scale: 0.97 }}
-              className="px-6 py-3 rounded-xl bg-crimson text-white font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-shadow"
+              className="px-6 py-3 rounded-xl bg-crimson text-white font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-shadow hover:shadow-[0_0_30px_hsl(354_96%_43%_/_0.5)]"
             >
               <Play className="w-4 h-4" />
               Start Discovery
-            </motion.button>
-          </motion.div>
+            </button>
+          </div>
 
           {/* Knowledge Graph */}
-          <FloatingPanel z={50} className="mb-8 overflow-hidden" dark delay={0.1}>
+          <FloatingPanel z={50} className="mb-8 overflow-hidden">
             <div className="p-4 border-b border-border flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-bone animate-pulse" />
               <span className="text-bone font-mono text-xs">Knowledge Graph · {nodes?.length ?? 0} nodes</span>
             </div>
-            <motion.div
-              animate={zoomedIn ? { scale: 2.5, x: -200, y: -100 } : { scale: 1, x: 0, y: 0 }}
-              transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+            <div
               className="relative min-h-[400px]"
             >
               {!nodes ? (
@@ -191,76 +184,53 @@ const SynthesisLab = () => {
 
                 {/* Nodes - bright white */}
                 {nodes?.map((node) => (
-                  <motion.circle
+                  <circle
                     key={node.id}
                     cx={node?.x ?? 0}
                     cy={node?.y ?? 0}
                     r={node?.size ?? 0}
                     fill="hsl(0 0% 100% / 0.8)"
-                    initial={{ opacity: 0 }}
-                    animate={{
-                      opacity: [0.4, 0.9, 0.4],
-                      cx: (node?.x ?? 0) + (Math.random() - 0.5) * 4,
-                      cy: (node?.y ?? 0) + (Math.random() - 0.5) * 4,
-                    }}
-                    transition={{
-                      opacity: { duration: 2 + Math.random() * 3, repeat: Infinity },
-                      cx: { duration: 6 + Math.random() * 4, repeat: Infinity, repeatType: "reverse" },
-                      cy: { duration: 6 + Math.random() * 4, repeat: Infinity, repeatType: "reverse" },
-                    }}
                   />
                 ))}
 
                 {/* Discovery Gap - Deep Red Pulsing Orb */}
-                <motion.circle
+                <circle
                   cx={400}
                   cy={300}
                   r={22}
                   fill="hsl(0 80% 30%)"
-                  animate={{
-                    r: [18, 24, 18],
-                    opacity: [0.8, 1, 0.8],
-                  }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="animate-pulse"
                 />
-                <motion.circle
+                <circle
                   cx={400}
                   cy={300}
                   r={35}
                   fill="none"
                   stroke="hsl(354 96% 43% / 0.4)"
                   strokeWidth={1}
-                  animate={{
-                    r: [30, 40, 30],
-                    opacity: [0.3, 0.7, 0.3],
-                  }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="animate-[pulse_2s_ease-in-out_infinite]"
                 />
-                <motion.circle
+                <circle
                   cx={400}
                   cy={300}
                   r={50}
                   fill="none"
                   stroke="hsl(354 96% 43% / 0.15)"
                   strokeWidth={0.5}
-                  animate={{
-                    r: [45, 58, 45],
-                    opacity: [0.2, 0.5, 0.2],
-                  }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                  className="animate-[pulse_2.5s_ease-in-out_infinite]"
                 />
                 <text x={400} y={355} textAnchor="middle" fill="hsl(354 96% 60%)" fontSize={9} fontFamily="var(--font-mono)">
                   DISCOVERY GAP
                 </text>
               </svg>
               )}
-            </motion.div>
+            </div>
           </FloatingPanel>
 
           {/* Swarm Debate */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Visionary */}
-            <FloatingPanel z={40} className="!bg-transparent !border-0 !shadow-none" delay={0.3}>
+            <FloatingPanel z={40} className="!bg-transparent !border-0 !shadow-none">
               <div className="terminal-visionary p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
                   <Rocket className="w-4 h-4 text-sky-blue" />
@@ -269,24 +239,19 @@ const SynthesisLab = () => {
                 </div>
                 <div className="space-y-3 font-mono text-xs max-h-[250px] overflow-y-auto">
                   {visionaryLogs.map((msg, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.1 }}
-                    >
+                    <div key={i}>
                       <span className="text-sky-blue/40">{msg.time}</span>
                       <p className={`text-bone/70 mt-0.5 ${msg.msg.startsWith("INSIGHT") ? "text-sky-blue font-semibold" : ""}`}>
                         {msg.msg}
                       </p>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </div>
             </FloatingPanel>
 
             {/* Skeptic */}
-            <FloatingPanel z={40} className="!bg-transparent !border-0 !shadow-none" delay={0.4}>
+            <FloatingPanel z={40} className="!bg-transparent !border-0 !shadow-none">
               <div className="terminal-skeptic p-5">
                 <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
                   <ShieldAlert className="w-4 h-4 text-crimson" />
@@ -295,17 +260,12 @@ const SynthesisLab = () => {
                 </div>
                 <div className="space-y-3 font-mono text-xs max-h-[250px] overflow-y-auto">
                   {skepticLogs.map((msg, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.1 }}
-                    >
+                    <div key={i}>
                       <span className="text-crimson/40">{msg.time}</span>
                       <p className={`text-bone/70 mt-0.5 ${msg.msg.startsWith("WARNING") || msg.msg.startsWith("CHALLENGE") ? "text-crimson font-semibold" : ""}`}>
                         {msg.msg}
                       </p>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -313,25 +273,15 @@ const SynthesisLab = () => {
           </div>
 
           {/* Final Manuscript */}
-          <motion.div
-            initial={{ opacity: 0, y: 60 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-          >
-            <FloatingPanel z={60} className="max-w-2xl mx-auto p-10 relative overflow-hidden" delay={0.6}>
+            <FloatingPanel z={60} className="max-w-2xl mx-auto p-10 relative overflow-hidden">
               <div className="flex items-center gap-2 mb-6 relative z-10">
                 <FileText className="w-5 h-5 text-pure-black/50" />
                 <span className="text-pure-black font-display font-semibold text-sm">Final Manuscript</span>
               </div>
               <div className="font-mono text-xs leading-relaxed text-pure-black/70 space-y-0.5 relative z-10">
                 {manuscriptLines.map((line, i) => (
-                  <motion.div
+                  <div
                     key={i}
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.03 }}
                     className={`${
                       line === "SYNTHESIS REPORT" ? "text-pure-black font-bold text-lg font-display" : ""
                     } ${line.startsWith("═") || line.startsWith("───") ? "text-border" : ""} ${
@@ -339,11 +289,10 @@ const SynthesisLab = () => {
                     } ${line.startsWith("CONFIDENCE") || line.startsWith("NOVELTY") ? "text-crimson font-semibold" : ""}`}
                   >
                     {line || <br />}
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </FloatingPanel>
-          </motion.div>
         </div>
       </ParallaxContainer>
     </div>

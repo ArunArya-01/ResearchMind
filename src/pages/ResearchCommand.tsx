@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import FloatingPanel from "../components/FloatingPanel";
 import ParallaxContainer from "../components/ParallaxContainer";
 import RadialGauge from "../components/RadialGauge";
@@ -18,13 +17,10 @@ const discoveries = [
 const ResearchCommand = () => {
   return (
     <div className="min-h-screen pt-24 px-6 pb-12">
-      <ParallaxContainer intensity={4}>
+      <ParallaxContainer>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+          <div
             className="mb-12 text-center"
           >
             <h1 className="text-bone font-display text-5xl font-bold tracking-tight mb-3">
@@ -33,10 +29,10 @@ const ResearchCommand = () => {
             <p className="text-bone/40 font-mono text-sm">
               8 active discoveries · 1,379 papers indexed · 3 synthesis complete
             </p>
-          </motion.div>
+          </div>
 
           {/* Stats Bar */}
-          <FloatingPanel z={40} className="mb-10 p-4 flex items-center justify-between" delay={0.1}>
+          <FloatingPanel z={40} className="mb-10 p-4 flex items-center justify-between">
             <div className="flex items-center gap-8">
               {[
                 { label: "Active Threads", value: "8" },
@@ -54,20 +50,11 @@ const ResearchCommand = () => {
 
           {/* Discovery Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {discoveries.map((disc, i) => {
+            {discoveries.map((disc) => {
               const Icon = disc.icon;
               return (
-                <motion.div
+                <div
                   key={disc.title}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.15 + i * 0.07 }}
-                  whileHover={{
-                    y: -12,
-                    scale: 1.02,
-                    boxShadow: "0 50px 100px -20px hsl(0 0% 0% / 0.9)",
-                    transition: { duration: 0.25 },
-                  }}
                   className="glass-panel p-5 cursor-pointer group relative overflow-hidden"
                   style={{ transformStyle: "preserve-3d", transform: "translateZ(50px)" }}
                 >
@@ -87,13 +74,11 @@ const ResearchCommand = () => {
                     <span className="text-pure-black/30 font-mono text-xs">
                       {disc.papers} papers
                     </span>
-                    <motion.div
-                      className="w-2 h-2 rounded-full bg-crimson"
-                      animate={{ opacity: [0.3, 1, 0.3] }}
-                      transition={{ duration: 2, repeat: Infinity }}
+                    <div
+                      className="w-2 h-2 rounded-full bg-crimson animate-pulse"
                     />
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>

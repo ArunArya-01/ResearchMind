@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import FloatingPanel from "../components/FloatingPanel";
 import ParallaxContainer from "../components/ParallaxContainer";
 import { ScanLine, ZoomIn, FileText, BarChart3, Image as ImageIcon } from "lucide-react";
@@ -47,11 +46,9 @@ const boundingBoxes = [
 const MultimodalVision = () => {
   return (
     <div className="min-h-screen pt-24 px-6 pb-12">
-      <ParallaxContainer intensity={3}>
+      <ParallaxContainer>
         <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+          <div
             className="mb-10 text-center"
           >
             <h1 className="text-bone font-display text-5xl font-bold tracking-tight mb-3">
@@ -60,12 +57,12 @@ const MultimodalVision = () => {
             <p className="text-bone/40 font-mono text-sm">
               Laser-scanning documents · Extracting visual elements · Building connections
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* PDF Viewer - Center */}
             <div className="lg:col-span-2">
-              <FloatingPanel z={50} className="relative overflow-hidden" delay={0.1}>
+              <FloatingPanel z={50} className="relative overflow-hidden">
                 <div className="p-4 border-b border-pure-black/10 flex items-center gap-3 relative z-10">
                   <FileText className="w-4 h-4 text-pure-black/50" />
                   <span className="text-pure-black font-mono text-xs">multi_modal_synthesis_2024.pdf</span>
@@ -77,19 +74,14 @@ const MultimodalVision = () => {
 
                 <div className="relative p-6 min-h-[500px] font-mono text-xs leading-relaxed text-pure-black/70">
                   {/* Laser scan line */}
-                  <motion.div
-                    className="laser-line"
-                    animate={{ top: ["0%", "100%"] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  <div
+                    className="laser-line animate-[scan_4s_linear_infinite]"
                   />
 
                   {/* PDF Content */}
                   {pdfLines.map((line, i) => (
-                    <motion.div
+                    <div
                       key={i}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 + i * 0.03 }}
                       className={`relative z-10 ${
                         line.startsWith("[") ? "text-crimson/70 font-semibold" : ""
                       } ${line.startsWith("|") ? "text-pure-black/50" : ""} ${
@@ -97,17 +89,13 @@ const MultimodalVision = () => {
                       }`}
                     >
                       {line || <br />}
-                    </motion.div>
+                    </div>
                   ))}
 
                   {/* Bounding Boxes */}
                   {boundingBoxes.map((box, i) => (
-                    <motion.div
+                    <div
                       key={i}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 1.5 + i * 0.3 }}
-                      whileHover={{ scale: 1.02, z: 10 }}
                       className="absolute border border-crimson/40 rounded-xl cursor-pointer group z-10"
                       style={{
                         top: box.top,
@@ -125,7 +113,7 @@ const MultimodalVision = () => {
                         <span className="text-crimson font-mono text-[10px]">{box.label}</span>
                       </div>
                       <div className="absolute inset-0 bg-crimson/5 group-hover:bg-crimson/8 rounded-xl transition-colors" />
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </FloatingPanel>
@@ -133,7 +121,7 @@ const MultimodalVision = () => {
 
             {/* Extraction Panel - Right */}
             <div className="space-y-5">
-              <FloatingPanel z={40} className="p-5" dark delay={0.3}>
+              <FloatingPanel z={40} className="p-5" dark>
                 <h3 className="text-bone font-display font-semibold text-sm mb-3 flex items-center gap-2">
                   <ZoomIn className="w-4 h-4 text-crimson" />
                   Extraction Log
@@ -148,11 +136,8 @@ const MultimodalVision = () => {
                     { time: "00:08.2", msg: "Cross-references linked", status: "ok" },
                     { time: "00:09.5", msg: "Embedding generated", status: "processing" },
                   ].map((log, i) => (
-                    <motion.div
+                    <div
                       key={i}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 + i * 0.15 }}
                       className="flex items-center gap-2"
                     >
                       <span className="text-bone/25">{log.time}</span>
@@ -160,12 +145,12 @@ const MultimodalVision = () => {
                       <span className={`ml-auto ${log.status === "ok" ? "text-graph-green" : "text-crimson animate-pulse"}`}>
                         {log.status === "ok" ? "✓" : "⟳"}
                       </span>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </FloatingPanel>
 
-              <FloatingPanel z={35} className="p-5" dark delay={0.5}>
+              <FloatingPanel z={35} className="p-5" dark>
                 <h3 className="text-bone font-display font-semibold text-sm mb-3">
                   Elements Found
                 </h3>
