@@ -1,10 +1,5 @@
 # Research Command Center (ResearchMind)
 
-![React](https://img.shields.io/badge/React-19-blue)
-![Vite](https://img.shields.io/badge/Vite-8-purple)
-![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC)
-![Python](https://img.shields.io/badge/Python-3.x-3776AB)
-
 A production-ready "Luxury Digital Lab" web application designed for high-fidelity research data synthesis and visualization. **Research Command Center** merges a sophisticated, futuristic UI with a robust Python backend that automates the ingestion, parsing, and analysis of academic papers.
 
 ---
@@ -107,3 +102,6 @@ Custom fonts (`font-display` and `font-mono`) and detailed SVG visualizers provi
 
 ## Next Steps
 This project currently serves as a front-end UI visualization space combined with an offline ingestion backend. Future goals involve connecting the React frontend directly to the Python output for live AI-driven analysis of the ingested papers.
+
+## License 
+MIT
