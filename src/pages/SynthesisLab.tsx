@@ -3,6 +3,13 @@ import FloatingPanel from "../components/FloatingPanel";
 import ParallaxContainer from "../components/ParallaxContainer";
 import { Rocket, ShieldAlert, FileText, Play, Loader2 } from "lucide-react";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? `http://${window.location.hostname}:8000`;
+
+const WS_BASE_URL =
+  import.meta.env.VITE_WS_BASE_URL ??
+  `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:8000`;
+
 const generateNodes = (count: number) => {
   const nodes: { id: number; x: number; y: number; size: number; connections: number[] }[] = [];
   for (let i = 0; i < count; i++) {
@@ -83,7 +90,7 @@ const SynthesisLab = () => {
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([]);
 
   useEffect(() => {
-    fetch(`http://${window.location.hostname}:8000/nodes`)
+    fetch(`${API_BASE_URL}/nodes`)
       .then(res => res.json())
       .then(data => setNodes(data))
       .catch(console.error);
@@ -93,7 +100,7 @@ const SynthesisLab = () => {
     setZoomedIn(true);
     setTimeout(() => setZoomedIn(false), 4000);
 
-    const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/swarm`);
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/swarm`);
     ws.onopen = () => {
       ws.send(JSON.stringify({
         command: "start",

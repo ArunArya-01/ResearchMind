@@ -50,8 +50,9 @@ Together, they debate iteratively until a cohesive, battle-tested scientific pat
 - **Design Identity:** Industrial High-Performance Tech featuring a palette of *Obsidian Black, Bone White, and Crimson Red*.
 
 ### Backend & AI
-- **Python (FastAPI):** High-speed, robust backend routing.
-- **WebSockets:** Enabling real-time, low-latency agent streaming for the swarm debate.
+- **Go (net/http + goroutines):** High-performance API gateway and concurrency-heavy service layer.
+- **Python (FastAPI):** AI worker layer for PDF parsing and swarm reasoning.
+- **WebSockets (Go proxy + Python worker):** Real-time streaming for adversarial swarm debate.
 - **Google Gemini 1.5 Flash:** Core reasoning and multimodal vision engine.
 - **NetworkX:** Graph logic and structural relationship mapping.
 
@@ -65,8 +66,8 @@ git clone https://github.com/your-username/HackVerse.git
 cd HackVerse
 ```
 
-### 2. Backend Setup
-Set up the Python environment and install the required dependencies:
+### 2. Backend Setup (Go API + Python Worker)
+Set up the Python worker first:
 ```bash
 cd backend
 python3 -m venv venv
@@ -75,9 +76,16 @@ pip install -r requirements.txt
 ```
 *Make sure to configure your `.env` file based on `.env.example` to include your `GEMINI_API_KEY`.*
 
-Start the FastAPI server:
+Start the Python worker on port `8001`:
 ```bash
-uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8001
+```
+
+In a second terminal, start the Go API gateway on port `8000`:
+```bash
+cd backend/go
+go mod tidy
+go run .
 ```
 
 ### 3. Frontend Setup
@@ -89,3 +97,9 @@ npm run dev
 ```
 
 Navigate to `http://localhost:5173` to explore the ResearchMind Discovery Engine.
+
+Optional frontend overrides:
+```bash
+VITE_API_BASE_URL=http://localhost:8000
+VITE_WS_BASE_URL=ws://localhost:8000
+```
