@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pdf2image
+google-generativeai
+networkx
+websockets
+python-multipart
+python-dotenv
+requests

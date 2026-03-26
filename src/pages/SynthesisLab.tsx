@@ -1,8 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import FloatingPanel from "../components/FloatingPanel";
 import ParallaxContainer from "../components/ParallaxContainer";
-import { Rocket, ShieldAlert, FileText, Play } from "lucide-react";
+import { Rocket, ShieldAlert, FileText, Play, Loader2 } from "lucide-react";
 
 const generateNodes = (count: number) => {
   const nodes: { id: number; x: number; y: number; size: number; connections: number[] }[] = [];
@@ -79,11 +79,45 @@ const manuscriptLines = [
 
 const SynthesisLab = () => {
   const [zoomedIn, setZoomedIn] = useState(false);
-  const nodes = useMemo(() => generateNodes(200), []);
+  const [nodes, setNodes] = useState<{ id: number; x: number; y: number; size: number; connections: number[] }[] | null>(null);
+  const [visionaryLogs, setVisionaryLogs] = useState<{ time: string; msg: string }[]>([]);
+  const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([]);
+
+  useEffect(() => {
+    fetch(`http://${window.location.hostname}:8000/nodes`)
+      .then(res => res.json())
+      .then(data => setNodes(data))
+      .catch(console.error);
+  }, []);
 
   const handleStartDiscovery = useCallback(() => {
     setZoomedIn(true);
     setTimeout(() => setZoomedIn(false), 4000);
+
+    const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/swarm`);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        command: "start",
+        topic: "Quantum Coherence in Biological Systems",
+        gap_data: { red_anomalies: [] }
+      }));
+    };
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const logEntry = {
+          time: `T+${(performance.now() / 1000).toFixed(2)}s`,
+          msg: data.message
+        };
+        if (data.agent === "Visionary") {
+          setVisionaryLogs(prev => [...prev, logEntry]);
+        } else if (data.agent === "Skeptic") {
+          setSkepticLogs(prev => [...prev, logEntry]);
+        }
+      } catch (e) {
+        console.error("WebSocket message parse error", e);
+      }
+    };
   }, []);
 
   return (
@@ -116,28 +150,34 @@ const SynthesisLab = () => {
           <FloatingPanel z={50} className="mb-8 overflow-hidden" dark delay={0.1}>
             <div className="p-4 border-b border-border flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-bone animate-pulse" />
-              <span className="text-bone font-mono text-xs">Knowledge Graph · {nodes.length} nodes</span>
+              <span className="text-bone font-mono text-xs">Knowledge Graph · {nodes?.length ?? 0} nodes</span>
             </div>
             <motion.div
               animate={zoomedIn ? { scale: 2.5, x: -200, y: -100 } : { scale: 1, x: 0, y: 0 }}
               transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-              className="relative"
+              className="relative min-h-[400px]"
             >
-              <svg width="100%" viewBox="0 0 800 600" className="h-[400px]">
-                {/* Connections - ultra-thin white */}
-                {nodes.map((node) =>
-                  node.connections.map((target, ci) => (
-                    <line
-                      key={`${node.id}-${ci}`}
-                      x1={node.x}
-                      y1={node.y}
-                      x2={nodes[target].x}
-                      y2={nodes[target].y}
-                      stroke="hsl(0 0% 100% / 0.08)"
-                      strokeWidth={0.5}
-                    />
-                  ))
-                )}
+              {!nodes ? (
+                <div className="flex flex-col items-center justify-center h-[400px] text-bone/50">
+                  <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                  <span className="font-mono text-sm">Initializing Knowledge Graph...</span>
+                </div>
+              ) : (
+                <svg width="100%" viewBox="0 0 800 600" className="h-[400px]">
+                  {/* Connections - ultra-thin white */}
+                  {nodes?.map((node) =>
+                    node?.connections?.map((target, ci) => (
+                      <line
+                        key={`${node.id}-${ci}`}
+                        x1={node?.x ?? 0}
+                        y1={node?.y ?? 0}
+                        x2={nodes[target]?.x ?? 0}
+                        y2={nodes[target]?.y ?? 0}
+                        stroke="hsl(0 0% 100% / 0.08)"
+                        strokeWidth={0.5}
+                      />
+                    ))
+                  )}
 
                 {/* Red glow from Discovery Gap */}
                 <defs>
@@ -150,18 +190,18 @@ const SynthesisLab = () => {
                 <circle cx={400} cy={300} r={80} fill="url(#redGlow)" />
 
                 {/* Nodes - bright white */}
-                {nodes.map((node) => (
+                {nodes?.map((node) => (
                   <motion.circle
                     key={node.id}
-                    cx={node.x}
-                    cy={node.y}
-                    r={node.size}
+                    cx={node?.x ?? 0}
+                    cy={node?.y ?? 0}
+                    r={node?.size ?? 0}
                     fill="hsl(0 0% 100% / 0.8)"
                     initial={{ opacity: 0 }}
                     animate={{
                       opacity: [0.4, 0.9, 0.4],
-                      cx: node.x + (Math.random() - 0.5) * 4,
-                      cy: node.y + (Math.random() - 0.5) * 4,
+                      cx: (node?.x ?? 0) + (Math.random() - 0.5) * 4,
+                      cy: (node?.y ?? 0) + (Math.random() - 0.5) * 4,
                     }}
                     transition={{
                       opacity: { duration: 2 + Math.random() * 3, repeat: Infinity },
@@ -213,6 +253,7 @@ const SynthesisLab = () => {
                   DISCOVERY GAP
                 </text>
               </svg>
+              )}
             </motion.div>
           </FloatingPanel>
 
@@ -227,12 +268,12 @@ const SynthesisLab = () => {
                   <span className="text-bone/20 font-mono text-xs ml-auto">Agent Alpha</span>
                 </div>
                 <div className="space-y-3 font-mono text-xs max-h-[250px] overflow-y-auto">
-                  {visionaryMessages.map((msg, i) => (
+                  {visionaryLogs.map((msg, i) => (
                     <motion.div
                       key={i}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 + i * 0.3 }}
+                      transition={{ delay: 0.1 }}
                     >
                       <span className="text-sky-blue/40">{msg.time}</span>
                       <p className={`text-bone/70 mt-0.5 ${msg.msg.startsWith("INSIGHT") ? "text-sky-blue font-semibold" : ""}`}>
@@ -253,12 +294,12 @@ const SynthesisLab = () => {
                   <span className="text-bone/20 font-mono text-xs ml-auto">Agent Beta</span>
                 </div>
                 <div className="space-y-3 font-mono text-xs max-h-[250px] overflow-y-auto">
-                  {skepticMessages.map((msg, i) => (
+                  {skepticLogs.map((msg, i) => (
                     <motion.div
                       key={i}
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.7 + i * 0.3 }}
+                      transition={{ delay: 0.1 }}
                     >
                       <span className="text-crimson/40">{msg.time}</span>
                       <p className={`text-bone/70 mt-0.5 ${msg.msg.startsWith("WARNING") || msg.msg.startsWith("CHALLENGE") ? "text-crimson font-semibold" : ""}`}>
