@@ -81,7 +81,7 @@ const MultimodalVision = () => {
     setExtractedText(""); 
     setCurrentBoxes([]); 
     localStorage.setItem("is_analysis_complete", "false");
-    localStorage.setItem("pdf_keywords", JSON.stringify([]));
+    sessionStorage.setItem("active_keywords", JSON.stringify([]));
     fetch("http://localhost:8000/reset", { method: "POST" }).catch(()=>console.log("Memory flush skipped"));
 
     const formData = new FormData();
@@ -107,9 +107,9 @@ const MultimodalVision = () => {
           ];
 
           if (backendKeywords.length > 0) {
-             localStorage.setItem("pdf_keywords", JSON.stringify(backendKeywords));
+             sessionStorage.setItem("active_keywords", JSON.stringify(backendKeywords));
           } else {
-             localStorage.setItem("pdf_keywords", JSON.stringify([]));
+             sessionStorage.setItem("active_keywords", JSON.stringify([]));
           }
           
           localStorage.setItem("pdf_upload_time", Date.now().toString());
