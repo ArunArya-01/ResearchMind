@@ -88,6 +88,7 @@ const SynthesisLab = () => {
   const [nodes, setNodes] = useState<{ id: number; x: number; y: number; size: number; connections: number[] }[] | null>(null);
   const [visionaryLogs, setVisionaryLogs] = useState<{ time: string; msg: string }[]>([]);
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([]);
+  const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/nodes`)
@@ -100,7 +101,7 @@ const SynthesisLab = () => {
     setZoomedIn(true);
     setTimeout(() => setZoomedIn(false), 4000);
 
-    const ws = new WebSocket(`${WS_BASE_URL}/ws/swarm`);
+    const ws = new WebSocket("ws://localhost:8000/ws/swarm");
     ws.onopen = () => {
       ws.send(JSON.stringify({
         command: "start",
@@ -111,9 +112,13 @@ const SynthesisLab = () => {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.type === 'final_report') {
+          setFinalReportContent(data.content || data.message);
+          return;
+        }
         const logEntry = {
           time: `T+${(performance.now() / 1000).toFixed(2)}s`,
-          msg: data.message
+          msg: data.message || data.content || ""
         };
         if (data.agent === "Visionary") {
           setVisionaryLogs(prev => [...prev, logEntry]);
@@ -149,17 +154,17 @@ const SynthesisLab = () => {
           </div>
 
           {/* Knowledge Graph */}
-          <FloatingPanel z={50} className="mb-8 overflow-hidden">
-            <div className="p-4 border-b border-border flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-bone animate-pulse" />
-              <span className="text-bone font-mono text-xs">Knowledge Graph · {nodes?.length ?? 0} nodes</span>
+          <FloatingPanel z={50} className="mb-8 overflow-hidden border border-crimson/50">
+            <div className="p-4 border-b border-crimson/20 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-crimson animate-pulse" />
+              <span className="text-pure-black font-mono text-xs">Knowledge Graph · {nodes?.length ?? 0} nodes</span>
             </div>
             <div
               className="relative min-h-[400px]"
             >
               {!nodes ? (
-                <div className="flex flex-col items-center justify-center h-[400px] text-bone/50">
-                  <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                <div className="flex flex-col items-center justify-center h-[400px] text-pure-black/50">
+                  <Loader2 className="w-8 h-8 animate-spin mb-4 text-crimson" />
                   <span className="font-mono text-sm">Initializing Knowledge Graph...</span>
                 </div>
               ) : (
@@ -173,7 +178,7 @@ const SynthesisLab = () => {
                         y1={node?.y ?? 0}
                         x2={nodes[target]?.x ?? 0}
                         y2={nodes[target]?.y ?? 0}
-                        stroke="hsl(0 0% 100% / 0.08)"
+                        stroke="hsl(0 0% 0% / 0.08)"
                         strokeWidth={0.5}
                       />
                     ))
@@ -196,7 +201,7 @@ const SynthesisLab = () => {
                     cx={node?.x ?? 0}
                     cy={node?.y ?? 0}
                     r={node?.size ?? 0}
-                    fill="hsl(0 0% 100% / 0.8)"
+                    fill="hsl(0 0% 0% / 0.8)"
                   />
                 ))}
 
@@ -238,17 +243,17 @@ const SynthesisLab = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Visionary */}
             <FloatingPanel z={40} className="!bg-transparent !border-0 !shadow-none">
-              <div className="terminal-visionary p-5">
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+              <div className="p-5 bg-bone border border-crimson/50 rounded-xl shadow-[0_8px_40px_-8px_hsl(0_0%_0%_/_0.2)]">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-crimson/20">
                   <Rocket className="w-4 h-4 text-sky-blue" />
-                  <span className="text-bone font-mono font-bold text-sm">VISIONARY</span>
-                  <span className="text-bone/20 font-mono text-xs ml-auto">Agent Alpha</span>
+                  <span className="text-pure-black font-mono font-bold text-sm">VISIONARY</span>
+                  <span className="text-pure-black/40 font-mono text-xs ml-auto">Agent Alpha</span>
                 </div>
                 <div className="space-y-3 font-mono text-xs max-h-[250px] overflow-y-auto">
                   {visionaryLogs.map((msg, i) => (
                     <div key={i}>
-                      <span className="text-sky-blue/40">{msg.time}</span>
-                      <p className={`text-bone/70 mt-0.5 ${msg.msg.startsWith("INSIGHT") ? "text-sky-blue font-semibold" : ""}`}>
+                      <span className="text-pure-black/40">{msg.time}</span>
+                      <p className={`text-pure-black/80 mt-0.5 ${msg.msg.startsWith("INSIGHT") ? "text-sky-blue font-bold" : ""}`}>
                         {msg.msg}
                       </p>
                     </div>
@@ -259,17 +264,17 @@ const SynthesisLab = () => {
 
             {/* Skeptic */}
             <FloatingPanel z={40} className="!bg-transparent !border-0 !shadow-none">
-              <div className="terminal-skeptic p-5">
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+              <div className="p-5 bg-bone border border-crimson/50 rounded-xl shadow-[0_8px_40px_-8px_hsl(0_0%_0%_/_0.2)]">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-crimson/20">
                   <ShieldAlert className="w-4 h-4 text-crimson" />
-                  <span className="text-bone font-mono font-bold text-sm">SKEPTIC</span>
-                  <span className="text-bone/20 font-mono text-xs ml-auto">Agent Beta</span>
+                  <span className="text-pure-black font-mono font-bold text-sm">SKEPTIC</span>
+                  <span className="text-pure-black/40 font-mono text-xs ml-auto">Agent Beta</span>
                 </div>
                 <div className="space-y-3 font-mono text-xs max-h-[250px] overflow-y-auto">
                   {skepticLogs.map((msg, i) => (
                     <div key={i}>
-                      <span className="text-crimson/40">{msg.time}</span>
-                      <p className={`text-bone/70 mt-0.5 ${msg.msg.startsWith("WARNING") || msg.msg.startsWith("CHALLENGE") ? "text-crimson font-semibold" : ""}`}>
+                      <span className="text-crimson/60">{msg.time}</span>
+                      <p className={`text-pure-black/80 mt-0.5 ${msg.msg.startsWith("WARNING") || msg.msg.startsWith("CHALLENGE") ? "text-crimson font-bold" : ""}`}>
                         {msg.msg}
                       </p>
                     </div>
@@ -280,24 +285,28 @@ const SynthesisLab = () => {
           </div>
 
           {/* Final Manuscript */}
-            <FloatingPanel z={60} className="max-w-2xl mx-auto p-10 relative overflow-hidden">
+            <FloatingPanel z={60} className="max-w-2xl mx-auto p-10 relative overflow-hidden border border-crimson/50 min-h-[400px]">
               <div className="flex items-center gap-2 mb-6 relative z-10">
                 <FileText className="w-5 h-5 text-pure-black/50" />
                 <span className="text-pure-black font-display font-semibold text-sm">Final Manuscript</span>
               </div>
               <div className="font-mono text-xs leading-relaxed text-pure-black/70 space-y-0.5 relative z-10">
-                {manuscriptLines.map((line, i) => (
-                  <div
-                    key={i}
-                    className={`${
-                      line === "SYNTHESIS REPORT" ? "text-pure-black font-bold text-lg font-display" : ""
-                    } ${line.startsWith("═") || line.startsWith("───") ? "text-border" : ""} ${
-                      line.startsWith("KEY") || line.startsWith("ABSTRACT") ? "text-pure-black font-bold mt-2" : ""
-                    } ${line.startsWith("CONFIDENCE") || line.startsWith("NOVELTY") ? "text-crimson font-semibold" : ""}`}
-                  >
-                    {line || <br />}
-                  </div>
-                ))}
+                {finalReportContent ? (
+                  <div className="whitespace-pre-wrap">{finalReportContent}</div>
+                ) : (
+                  manuscriptLines.map((line, i) => (
+                    <div
+                      key={i}
+                      className={`${
+                        line === "SYNTHESIS REPORT" ? "text-pure-black font-bold text-lg font-display" : ""
+                      } ${line.startsWith("═") || line.startsWith("───") ? "text-pure-black/20" : ""} ${
+                        line.startsWith("KEY") || line.startsWith("ABSTRACT") ? "text-pure-black font-bold mt-2" : ""
+                      } ${line.startsWith("CONFIDENCE") || line.startsWith("NOVELTY") ? "text-crimson font-semibold" : ""}`}
+                    >
+                      {line || <br />}
+                    </div>
+                  ))
+                )}
               </div>
             </FloatingPanel>
         </div>
