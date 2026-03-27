@@ -78,9 +78,11 @@ const MultimodalVision = () => {
 
     setFile(selectedFile);
     setIsUploading(true);
-    setExtractedText(""); // Clear old text right away
-    setCurrentBoxes([]); // Clear old bounding boxes
+    setExtractedText(""); 
+    setCurrentBoxes([]); 
     localStorage.setItem("is_analysis_complete", "false");
+    localStorage.setItem("pdf_keywords", JSON.stringify([]));
+    fetch("http://localhost:8000/reset", { method: "POST" }).catch(()=>console.log("Memory flush skipped"));
 
     const formData = new FormData();
     formData.append("file", selectedFile);

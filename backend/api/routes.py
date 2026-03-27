@@ -7,7 +7,13 @@ from agents.swarm import SwarmOrchestrator
 
 router = APIRouter()
 
-PROCESSED_DATA = {}
+PROCESSED_DATA = {"text": "", "keywords": []}
+
+@router.post("/reset")
+async def reset_data():
+    global PROCESSED_DATA
+    PROCESSED_DATA = {"text": "", "keywords": []}
+    return {"status": "cleared"}
 
 class ConnectionManager:
     def __init__(self):
@@ -68,6 +74,9 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
 
 @router.post("/upload/pdf")
 async def upload_pdf(file: UploadFile = File(...)):
+    global PROCESSED_DATA
+    PROCESSED_DATA = {"text": "", "keywords": []}
+    
     contents = await file.read()
     
     import os

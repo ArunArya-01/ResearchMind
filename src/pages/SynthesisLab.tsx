@@ -80,8 +80,9 @@ const SynthesisLab = () => {
       }
 
       try {
-        const storedKeywords = JSON.parse(localStorage.getItem("pdf_keywords") || "[]");
-        if (storedKeywords.length > 0) {
+        const isComplete = localStorage.getItem("is_analysis_complete") === "true";
+        if (isComplete) {
+          const storedKeywords = JSON.parse(localStorage.getItem("pdf_keywords") || "[]");
           setPdfKeywords(storedKeywords);
         } else {
           setPdfKeywords([]);
@@ -209,10 +210,13 @@ const SynthesisLab = () => {
                 </radialGradient>
               </defs>
               <circle cx={400} cy={300} r={80} fill="url(#redGlow)" />
-              {pdfActive && !isAnalysisComplete && (
-                <text x={400} y={305} textAnchor="middle" fill="hsl(0 0% 100% / 0.6)" fontSize={12} fontFamily="var(--font-mono)" className="animate-pulse">
-                  Awaiting Data Ingestion...
-                </text>
+              {(!pdfActive || !isAnalysisComplete) && (
+                <g>
+                  <circle cx={400} cy={300} r={20} fill="hsl(354 96% 43% / 0.8)" className="animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_15px_rgba(217,4,41,0.9)]" />
+                  <text x={400} y={345} textAnchor="middle" className="fill-crimson/50 font-mono text-xs tracking-widest animate-pulse font-bold">
+                    AWAITING INGESTION
+                  </text>
+                </g>
               )}
 
               {/* Nodes - dynamic */}
