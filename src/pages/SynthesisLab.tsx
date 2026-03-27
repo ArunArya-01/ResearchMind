@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import FloatingPanel from "../components/FloatingPanel";
 import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
@@ -40,6 +40,17 @@ const SynthesisLab = () => {
   const [pdfActive, setPdfActive] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
   const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
+
+  const visionaryEndRef = useRef<HTMLDivElement>(null);
+  const skepticEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    visionaryEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [visionaryLogs]);
+
+  useEffect(() => {
+    skepticEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [skepticLogs]);
 
   const fetchNodes = useCallback(() => {
     setNodes(null);
@@ -87,14 +98,23 @@ const SynthesisLab = () => {
   }, [fetchNodes]);
 
   const handleStartDiscovery = useCallback(() => {
+    if (!pdfActive) {
+      alert("Please upload a manuscript first.");
+      return;
+    }
+
     setZoomedIn(true);
     setTimeout(() => setZoomedIn(false), 4000);
+
+    setVisionaryLogs([{ time: "T+0.00s", msg: "Connecting to swarm..." }]);
+    setSkepticLogs([{ time: "T+0.00s", msg: "Connecting to swarm..." }]);
+    setFinalReportContent(null);
 
     const ws = new WebSocket("ws://localhost:8000/ws/swarm");
     ws.onopen = () => {
       ws.send(JSON.stringify({
         command: "start",
-        topic: "Aircraft Engine RUL Prediction using XAI",
+        topic: pdfKeywords.length > 0 ? pdfKeywords.slice(0, 3).join(", ") : "General Document Analysis",
         gap_data: { red_anomalies: [] }
       }));
     };
@@ -118,7 +138,7 @@ const SynthesisLab = () => {
         console.error("WebSocket message parse error", e);
       }
     };
-  }, []);
+  }, [pdfActive, pdfKeywords]);
 
   return (
     <div className="min-h-screen bg-obsidian pt-24 px-6 pb-12">
@@ -132,7 +152,8 @@ const SynthesisLab = () => {
           </p>
           <button
             onClick={handleStartDiscovery}
-            className="px-6 py-3 rounded-xl bg-crimson text-white font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-shadow hover:shadow-[0_0_30px_hsl(354_96%_43%_/_0.5)]"
+            disabled={!pdfActive}
+            className={`px-6 py-3 rounded-xl font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-shadow ${pdfActive ? "bg-crimson text-white hover:shadow-[0_0_30px_hsl(354_96%_43%_/_0.5)]" : "bg-obsidian border border-crimson/30 text-crimson/50 cursor-not-allowed"}`}
           >
             <Play className="w-4 h-4" />
             Start Discovery
@@ -312,6 +333,7 @@ const SynthesisLab = () => {
                     </div>
                   ))
                 )}
+                <div ref={visionaryEndRef} />
               </div>
             </div>
           </FloatingPanel>
@@ -337,6 +359,7 @@ const SynthesisLab = () => {
                     </div>
                   ))
                 )}
+                <div ref={skepticEndRef} />
               </div>
             </div>
           </FloatingPanel>

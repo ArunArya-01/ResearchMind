@@ -35,7 +35,7 @@ def parse_pdf(file_bytes: bytes) -> Dict[str, Any]:
     keywords = list(dict.fromkeys(w[0] for w in sorted_words))[:10]
     
     if not keywords:
-        keywords = ["Turbofan", "RUL", "Aviation", "LSTM", "Maintenance", "Predictive", "Sensors", "Data", "Analysis", "Explainable"]
+        keywords = []
 
     references = clean_text.lower().count("references") + clean_text.lower().count("bibliography")
 

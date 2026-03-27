@@ -7,6 +7,8 @@ from agents.swarm import SwarmOrchestrator
 
 router = APIRouter()
 
+PROCESSED_DATA = {}
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -41,20 +43,24 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
             if msg.get("command") == "start":
                 topic = msg.get("topic", "General Research")
                 
-                # 1. Start the Debate
-                await manager.broadcast({"agent": "Visionary", "message": f"Initiating synthesis on: {topic}"})
-                await asyncio.sleep(1)
-                await manager.broadcast({"agent": "Skeptic", "message": "Analyzing for potential bias and data gaps..."})
+                # Run real orchestrator
+                text_context = PROCESSED_DATA.get("text", "")
                 
-                # 2. Simulate the Orchestrator work
-                # In a real demo, this would call your SwarmOrchestrator
-                await asyncio.sleep(2)
+                if not text_context:
+                    await websocket.send_json({"agent": "System", "message": "Error: No manuscript data found. Please upload a PDF first."})
+                    continue
+                
+                async def log_adapter(msg_str: str):
+                    await manager.broadcast(json.loads(msg_str))
+                    
+                orchestrator = SwarmOrchestrator(log_callback=log_adapter)
+                report = await orchestrator.run_swarm(discovery_gap_data={"context": text_context}, topic=topic)
                 
                 # 3. SEND THE FINAL MANUSCRIPT (The Output)
                 await manager.broadcast({
                     "type": "final_report",
                     "agent": "System",
-                    "content": f"# Research Synthesis: {topic}\n\n## Abstract\nThis document outlines the findings of the agentic swarm regarding the uploaded datasets..."
+                    "content": report
                 })
 
     except WebSocketDisconnect:
@@ -71,5 +77,6 @@ async def upload_pdf(file: UploadFile = File(...)):
         
     # This triggers your tool/pdf_parser.py
     json_result = parse_pdf(contents)
+    PROCESSED_DATA["text"] = json_result.get("text", "")
     
     return {"status": "success", "data": json_result}

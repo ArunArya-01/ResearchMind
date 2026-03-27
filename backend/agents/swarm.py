@@ -3,11 +3,14 @@ import os
 import google.generativeai as genai
 from typing import Callable, Any, Awaitable
 
+api_key = os.getenv("GOOGLE_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
+
 class SwarmOrchestrator:
     def __init__(self, log_callback: Callable[[str], Awaitable[Any]]):
         self.log_callback = log_callback
-        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
     async def log(self, agent_name: str, message: str):
         import json
