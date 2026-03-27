@@ -39,6 +39,7 @@ const SynthesisLab = () => {
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
   const [pdfActive, setPdfActive] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
+  const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
 
   const fetchNodes = useCallback(() => {
     setNodes(null);
@@ -56,6 +57,15 @@ const SynthesisLab = () => {
   useEffect(() => {
     const checkStorage = () => {
       setPdfActive(localStorage.getItem("pdf_active") === "true");
+      
+      const currentUploadTime = localStorage.getItem("pdf_upload_time");
+      if (currentUploadTime && currentUploadTime !== lastUploadTime) {
+         setLastUploadTime(currentUploadTime);
+         setVisionaryLogs([]);
+         setSkepticLogs([]);
+         setFinalReportContent(null);
+      }
+
       try {
         const storedKeywords = JSON.parse(localStorage.getItem("pdf_keywords") || "[]");
         if (storedKeywords.length > 0) {

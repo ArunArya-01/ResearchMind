@@ -70,5 +70,15 @@ async def upload_pdf(file: UploadFile = File(...)):
         f.write(contents)
         
     # This triggers your tool/pdf_parser.py
-    json_result = parse_pdf(contents) 
+    parsed_str = parse_pdf(contents)
+    try:
+        elements = json.loads(parsed_str)
+    except:
+        elements = []
+        
+    json_result = {
+        "elements": elements,
+        "text": contents.decode('utf-8', errors='ignore')
+    }
+    
     return {"status": "success", "data": json_result}

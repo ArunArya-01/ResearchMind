@@ -3,7 +3,7 @@ import FloatingPanel from "../components/FloatingPanel";
 import { ScanLine, ZoomIn, FileText, BarChart3, Image as ImageIcon, UploadCloud } from "lucide-react";
 
 const MultimodalVision = () => {
-  const [extractedText, setExtractedText] = useState<string[]>([]);
+  const [extractedText, setExtractedText] = useState<string>("");
   const [currentBoxes, setCurrentBoxes] = useState<any[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -64,7 +64,7 @@ const MultimodalVision = () => {
 
     setFile(selectedFile);
     setIsUploading(true);
-    setExtractedText([]); // Clear old text right away
+    setExtractedText(""); // Clear old text right away
     setCurrentBoxes([]); // Clear old bounding boxes
 
     const formData = new FormData();
@@ -81,11 +81,12 @@ const MultimodalVision = () => {
         try {
           const resData = await res.json();
           let parsedArray: any[] = [];
-          if (typeof resData.data === 'string') {
-            parsedArray = JSON.parse(resData.data);
-          } else if (Array.isArray(resData.data)) {
+          if (resData.data?.elements && Array.isArray(resData.data.elements)) {
+            parsedArray = resData.data.elements;
+          } else if (resData.data && Array.isArray(resData.data)) {
             parsedArray = resData.data;
           }
+          const documentText = resData.data?.text || "";
 
           let charts = 0;
           let tables = 0;
@@ -95,11 +96,6 @@ const MultimodalVision = () => {
             { time: "00:02.8", msg: "Visual elements extracted" }
           ];
 
-          const newExtractedText: string[] = [
-            "DOCUMENT ANALYSIS",
-            "───────────────────────────────────",
-            ""
-          ];
           let customKeywords: string[] = [];
           const newBoxes: any[] = [];
 
@@ -108,12 +104,6 @@ const MultimodalVision = () => {
               if (item.type === "chart") charts++;
               if (item.type === "table") tables++;
               if (item.type === "graph") graphs++;
-              
-              if (item.description || item.title) {
-                newExtractedText.push(`• ${item.title || item.description}`);
-              } else {
-                newExtractedText.push(`• Found ${item.type} on page ${item.page || 1}`);
-              }
 
               if (item.coordinates) {
                 newBoxes.push({
@@ -125,7 +115,7 @@ const MultimodalVision = () => {
                    type: item.type
                 });
               }
-              
+
               newLogs.push({ time: `00:0${3 + idx}.1`, msg: `Found ${item.type} on page ${item.page || 1}` });
             });
 
@@ -134,14 +124,16 @@ const MultimodalVision = () => {
               customKeywords = Array.from(new Set(words)).slice(0, 10);
             }
           }
-          
+
           if (customKeywords.length > 0) {
              localStorage.setItem("pdf_keywords", JSON.stringify(customKeywords));
           } else {
              localStorage.setItem("pdf_keywords", JSON.stringify([]));
           }
+          
+          localStorage.setItem("pdf_upload_time", Date.now().toString());
 
-          setExtractedText(newExtractedText);
+          setExtractedText(documentText);
           setCurrentBoxes(newBoxes);
 
           newLogs.push({ time: `00:10.0`, msg: "Multimodal extraction complete" });
@@ -158,7 +150,7 @@ const MultimodalVision = () => {
 
         } catch (e) {
           localStorage.setItem("pdf_keywords", JSON.stringify([]));
-          setExtractedText([]);
+          setExtractedText("");
         }
       } else {
         console.error("Upload failed");
@@ -233,23 +225,14 @@ const MultimodalVision = () => {
                     )}
 
                     {/* PDF Content */}
-                    {extractedText.length === 0 && !isScanning ? (
+                    {!extractedText && !isScanning ? (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-crimson/50 font-mono text-sm tracking-wider">No Data Ingested</span>
                       </div>
                     ) : (
-                      extractedText.map((line, i) => (
-                        <div
-                          key={i}
-                          className={`relative z-10 ${
-                            line.startsWith("[") || line.startsWith("DOCUMENT") ? "text-crimson/70 font-semibold" : ""
-                          } ${line.startsWith("|") || line.startsWith("─") ? "text-pure-black/50" : ""} ${
-                            /^\d\./.test(line) || line.startsWith("•") ? "font-semibold text-pure-black mt-2" : ""
-                          }`}
-                        >
-                          {line || <br />}
-                        </div>
-                      ))
+                      <div className="relative z-10 whitespace-pre-wrap">
+                        {extractedText}
+                      </div>
                     )}
 
                     {/* Bounding Boxes */}
