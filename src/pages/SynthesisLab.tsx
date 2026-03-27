@@ -37,10 +37,14 @@ const SynthesisLab = () => {
   const [visionaryLogs, setVisionaryLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
-  const [pdfActive, setPdfActive] = useState(false);
+  const [hasActiveScan, setHasActiveScan] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
   const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
-  const [isAnalysisComplete, setIsAnalysisComplete] = useState(false);
+  
+  useEffect(() => {
+    setPdfKeywords([]);
+    setNodes([]);
+  }, []);
 
   const visionaryEndRef = useRef<HTMLDivElement>(null);
   const skepticEndRef = useRef<HTMLDivElement>(null);
@@ -68,9 +72,6 @@ const SynthesisLab = () => {
 
   useEffect(() => {
     const checkStorage = () => {
-      setPdfActive(localStorage.getItem("pdf_active") === "true");
-      setIsAnalysisComplete(localStorage.getItem("is_analysis_complete") === "true");
-      
       const currentUploadTime = localStorage.getItem("pdf_upload_time");
       if (currentUploadTime && currentUploadTime !== lastUploadTime) {
          setLastUploadTime(currentUploadTime);
@@ -101,7 +102,7 @@ const SynthesisLab = () => {
   }, [fetchNodes]);
 
   const handleStartDiscovery = useCallback(() => {
-    if (!pdfActive) {
+    if (!hasActiveScan) {
       alert("Please upload a manuscript first.");
       return;
     }
@@ -140,7 +141,7 @@ const SynthesisLab = () => {
         console.error("WebSocket message parse error", e);
       }
     };
-  }, [pdfActive, pdfKeywords]);
+  }, [hasActiveScan, pdfKeywords]);
 
   return (
     <div className="min-h-screen bg-obsidian pt-24 px-6 pb-12">
@@ -154,8 +155,8 @@ const SynthesisLab = () => {
           </p>
           <button
             onClick={handleStartDiscovery}
-            disabled={!pdfActive}
-            className={`px-6 py-3 rounded-xl font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-shadow ${pdfActive ? "bg-crimson text-white hover:shadow-[0_0_30px_hsl(354_96%_43%_/_0.5)]" : "bg-obsidian border border-crimson/30 text-crimson/50 cursor-not-allowed"}`}
+            disabled={!hasActiveScan}
+            className={`px-6 py-3 rounded-xl font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-shadow ${hasActiveScan ? "bg-crimson text-white hover:shadow-[0_0_30px_hsl(354_96%_43%_/_0.5)]" : "bg-obsidian border border-crimson/30 text-crimson/50 cursor-not-allowed"}`}
           >
             <Play className="w-4 h-4" />
             Start Discovery
@@ -194,9 +195,9 @@ const SynthesisLab = () => {
                       y1={node?.y ?? 0}
                       x2={nodes[target]?.x ?? 0}
                       y2={nodes[target]?.y ?? 0}
-                      stroke={pdfActive && isAnalysisComplete ? "hsl(354 96% 43% / 0.3)" : "hsl(0 0% 100% / 0.08)"}
-                      strokeWidth={pdfActive && isAnalysisComplete ? 1 : 0.5}
-                      className={pdfActive && isAnalysisComplete ? "animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_2px_rgba(217,4,41,0.5)]" : ""}
+                      stroke={hasActiveScan ? "hsl(354 96% 43% / 0.3)" : "hsl(0 0% 100% / 0.08)"}
+                      strokeWidth={hasActiveScan ? 1 : 0.5}
+                      className={hasActiveScan ? "animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_2px_rgba(217,4,41,0.5)]" : ""}
                     />
                   ))
                 )}
@@ -210,18 +211,18 @@ const SynthesisLab = () => {
                 </radialGradient>
               </defs>
               <circle cx={400} cy={300} r={80} fill="url(#redGlow)" />
-              {(!pdfActive || !isAnalysisComplete) && (
+              {!hasActiveScan && (
                 <g>
                   <circle cx={400} cy={300} r={20} fill="hsl(354 96% 43% / 0.8)" className="animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_15px_rgba(217,4,41,0.9)]" />
                   <text x={400} y={345} textAnchor="middle" className="fill-crimson/50 font-mono text-xs tracking-widest animate-pulse font-bold">
-                    AWAITING INGESTION
+                    AWAITING DATA INPUT
                   </text>
                 </g>
               )}
 
               {/* Nodes - dynamic */}
               {nodes?.map((node, i) => {
-                const isKeywordNode = pdfActive && isAnalysisComplete && i < 10 && i < pdfKeywords.length;
+                const isKeywordNode = hasActiveScan && i < 10 && i < pdfKeywords.length;
                 const keywordText = isKeywordNode ? pdfKeywords[i] : null;
                 const targetR = isKeywordNode ? (node.size * 2) : node.size;
                 
@@ -244,11 +245,11 @@ const SynthesisLab = () => {
                         times: [0, 0.6, 1],
                         delay: Math.random() * 0.2
                       }}
-                      fill={pdfActive ? "hsl(354 96% 43% / 0.9)" : "hsl(0 0% 100% / 0.8)"}
+                      fill={hasActiveScan ? "hsl(354 96% 43% / 0.9)" : "hsl(0 0% 100% / 0.8)"}
                       className={`cursor-pointer overflow-visible hover:fill-bone/50 ${
                         isKeywordNode 
                           ? "drop-shadow-[0_0_12px_rgba(217,4,41,1)]" 
-                          : pdfActive 
+                          : hasActiveScan 
                             ? "animate-[pulse_3s_ease-in-out_infinite] drop-shadow-[0_0_8px_rgba(217,4,41,0.8)]" 
                             : "drop-shadow-[0_0_5px_rgba(253,253,253,0.8)]"
                       }`}
@@ -267,7 +268,7 @@ const SynthesisLab = () => {
                         }
                       }}
                     />
-                    {isKeywordNode && (
+                    {isKeywordNode && pdfKeywords.length > 0 && (
                       <motion.text
                         initial={{ opacity: 0, x: 400, y: 300 }}
                         animate={{ 
@@ -276,7 +277,7 @@ const SynthesisLab = () => {
                           y: [300, 300 + (node.y - 300) * 1.2 + 3, node.y + 3] 
                         }}
                         transition={{ 
-                          duration: 1.5,
+                          duration: 2,
                           ease: "easeOut",
                           times: [0, 0.6, 1],
                           delay: 0.5 + Math.random() * 0.3 

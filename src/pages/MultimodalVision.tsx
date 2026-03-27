@@ -80,7 +80,8 @@ const MultimodalVision = () => {
     setIsUploading(true);
     setExtractedText(""); 
     setCurrentBoxes([]); 
-    localStorage.setItem("is_analysis_complete", "false");
+    setCurrentBoxes([]); 
+    sessionStorage.setItem("hasActiveScan", "false");
     sessionStorage.setItem("active_keywords", JSON.stringify([]));
     fetch("http://localhost:8000/reset", { method: "POST" }).catch(()=>console.log("Memory flush skipped"));
 
@@ -94,7 +95,7 @@ const MultimodalVision = () => {
       });
       if (res.ok) {
         setIsScanning(true);
-        localStorage.setItem("pdf_active", "true");
+        sessionStorage.setItem("hasActiveScan", "true");
         try {
           const resData = await res.json();
           const documentText = resData.data?.text || "";
@@ -120,7 +121,7 @@ const MultimodalVision = () => {
           newLogs.push({ time: `00:05.1`, msg: `Found ${elementsInfo.pages} pages and ${elementsInfo.references} references` });
           newLogs.push({ time: `00:10.0`, msg: "Multimodal extraction complete" });
           setExtractionLogs(newLogs);
-          localStorage.setItem("is_analysis_complete", "true");
+          setExtractionLogs(newLogs);
 
           setElementsFound([
             { label: "Charts", count: 0 },
