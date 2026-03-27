@@ -66,6 +66,7 @@ const MultimodalVision = () => {
     setIsUploading(true);
     setExtractedText(""); // Clear old text right away
     setCurrentBoxes([]); // Clear old bounding boxes
+    localStorage.setItem("is_analysis_complete", "false");
 
     const formData = new FormData();
     formData.append("file", selectedFile);
@@ -103,6 +104,7 @@ const MultimodalVision = () => {
           newLogs.push({ time: `00:05.1`, msg: `Found ${elementsInfo.pages} pages and ${elementsInfo.references} references` });
           newLogs.push({ time: `00:10.0`, msg: "Multimodal extraction complete" });
           setExtractionLogs(newLogs);
+          localStorage.setItem("is_analysis_complete", "true");
 
           setElementsFound([
             { label: "Charts", count: 0 },

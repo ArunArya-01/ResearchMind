@@ -40,6 +40,7 @@ const SynthesisLab = () => {
   const [pdfActive, setPdfActive] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
   const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
+  const [isAnalysisComplete, setIsAnalysisComplete] = useState(false);
 
   const visionaryEndRef = useRef<HTMLDivElement>(null);
   const skepticEndRef = useRef<HTMLDivElement>(null);
@@ -68,6 +69,7 @@ const SynthesisLab = () => {
   useEffect(() => {
     const checkStorage = () => {
       setPdfActive(localStorage.getItem("pdf_active") === "true");
+      setIsAnalysisComplete(localStorage.getItem("is_analysis_complete") === "true");
       
       const currentUploadTime = localStorage.getItem("pdf_upload_time");
       if (currentUploadTime && currentUploadTime !== lastUploadTime) {
@@ -191,8 +193,9 @@ const SynthesisLab = () => {
                       y1={node?.y ?? 0}
                       x2={nodes[target]?.x ?? 0}
                       y2={nodes[target]?.y ?? 0}
-                      stroke="hsl(0 0% 100% / 0.08)"
-                      strokeWidth={0.5}
+                      stroke={pdfActive && isAnalysisComplete ? "hsl(354 96% 43% / 0.3)" : "hsl(0 0% 100% / 0.08)"}
+                      strokeWidth={pdfActive && isAnalysisComplete ? 1 : 0.5}
+                      className={pdfActive && isAnalysisComplete ? "animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_2px_rgba(217,4,41,0.5)]" : ""}
                     />
                   ))
                 )}
@@ -206,10 +209,15 @@ const SynthesisLab = () => {
                 </radialGradient>
               </defs>
               <circle cx={400} cy={300} r={80} fill="url(#redGlow)" />
+              {pdfActive && !isAnalysisComplete && (
+                <text x={400} y={305} textAnchor="middle" fill="hsl(0 0% 100% / 0.6)" fontSize={12} fontFamily="var(--font-mono)" className="animate-pulse">
+                  Awaiting Data Ingestion...
+                </text>
+              )}
 
               {/* Nodes - dynamic */}
               {nodes?.map((node, i) => {
-                const isKeywordNode = pdfActive && i < 10 && i < pdfKeywords.length;
+                const isKeywordNode = pdfActive && isAnalysisComplete && i < 10 && i < pdfKeywords.length;
                 const keywordText = isKeywordNode ? pdfKeywords[i] : null;
                 const targetR = isKeywordNode ? (node.size * 2) : node.size;
                 
