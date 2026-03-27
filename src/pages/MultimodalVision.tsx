@@ -2,50 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import FloatingPanel from "../components/FloatingPanel";
 import { ScanLine, ZoomIn, FileText, BarChart3, Image as ImageIcon, UploadCloud } from "lucide-react";
 
-const initialPdfLines = [
-  "Abstract: We present a novel framework for multi-modal",
-  "analysis of scientific literature using large language",
-  "models combined with computer vision techniques...",
-  "",
-  "1. Introduction",
-  "The exponential growth of scientific publications has",
-  "created an unprecedented need for automated tools",
-  "capable of extracting, synthesizing, and connecting",
-  "knowledge across disciplines. Traditional approaches",
-  "rely heavily on text-only analysis, missing critical",
-  "information embedded in figures, charts, and tables.",
-  "",
-  "Our approach leverages a multi-modal architecture",
-  "that processes both textual and visual elements...",
-  "",
-  "2. Methodology",
-  "We employ a three-stage pipeline:",
-  "  2.1 Document Decomposition",
-  "  2.2 Visual Element Extraction",
-  "  2.3 Cross-Modal Synthesis",
-  "",
-  "Figure 1: Architecture Overview",
-  "[CHART: Model Performance vs Baseline]",
-  "",
-  "3. Results",
-  "Our system achieves 94.2% accuracy on the",
-  "SciDoc benchmark, outperforming previous",
-  "state-of-the-art by 12.7 percentage points.",
-  "",
-  "Table 1: Comparative Analysis",
-  "| Model      | Accuracy | F1    |",
-  "| Baseline   | 81.5%    | 0.79  |",
-  "| Ours       | 94.2%    | 0.93  |",
-];
-
-const initialBoundingBoxes = [
-  { top: "52%", left: "10%", width: "80%", height: "8%", label: "Chart Detected", type: "chart" },
-  { top: "72%", left: "10%", width: "70%", height: "12%", label: "Table Detected", type: "table" },
-];
-
 const MultimodalVision = () => {
-  const [extractedText, setExtractedText] = useState<string[]>(initialPdfLines);
-  const [currentBoxes, setCurrentBoxes] = useState(initialBoundingBoxes);
+  const [extractedText, setExtractedText] = useState<string[]>([]);
+  const [currentBoxes, setCurrentBoxes] = useState<any[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -53,16 +12,14 @@ const MultimodalVision = () => {
   const [visibleLogs, setVisibleLogs] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [extractionLogs, setExtractionLogs] = useState<{ time: string; msg: string }[]>([
-    { time: "00:00.0", msg: "Awaiting document..." }
-  ]);
+  const [extractionLogs, setExtractionLogs] = useState<{ time: string; msg: string }[]>([]);
   const [elementsFound, setElementsFound] = useState<{ label: string; count: number }[]>([
-    { label: "Text Blocks", count: 0 },
-    { label: "Figures", count: 0 },
+    { label: "Charts", count: 0 },
     { label: "Tables", count: 0 },
-    { label: "Equations", count: 0 },
+    { label: "Graphs", count: 0 },
+    { label: "Total Elements", count: 0 },
+    { label: "Pages Scanned", count: 0 },
     { label: "References", count: 0 },
-    { label: "Entities", count: 0 },
   ]);
 
   useEffect(() => {
@@ -181,13 +138,7 @@ const MultimodalVision = () => {
           if (customKeywords.length > 0) {
              localStorage.setItem("pdf_keywords", JSON.stringify(customKeywords));
           } else {
-             localStorage.setItem("pdf_keywords", JSON.stringify(["Turbofan", "RUL", "LSTM", "Aviation Safety", "Explainable AI", "Prognostics", "Sensors", "Degradation", "Neural", "Maintenance"]));
-          }
-          
-          if (parsedArray.length === 0) {
-             newExtractedText.push("• Aircraft Engine RUL Prediction");
-             newExtractedText.push("• Explainable AI in Aviation Safety");
-             newExtractedText.push("• LSTM Networks for Predictive Maintenance");
+             localStorage.setItem("pdf_keywords", JSON.stringify([]));
           }
 
           setExtractedText(newExtractedText);
@@ -206,15 +157,8 @@ const MultimodalVision = () => {
           ]);
 
         } catch (e) {
-          localStorage.setItem("pdf_keywords", JSON.stringify(["Turbofan", "RUL", "LSTM", "Aviation Safety", "Explainable AI", "Predictive", "Maintenance", "Sensors", "Degradation", "Flight"]));
-          setExtractedText([
-             "DOCUMENT ANALYSIS",
-             "───────────────────────────────────",
-             "",
-             "• Aircraft Engine RUL Prediction",
-             "• Explainable AI in Aviation Safety",
-             "• LSTM Networks for Predictive Maintenance"
-          ]);
+          localStorage.setItem("pdf_keywords", JSON.stringify([]));
+          setExtractedText([]);
         }
       } else {
         console.error("Upload failed");
@@ -289,18 +233,24 @@ const MultimodalVision = () => {
                     )}
 
                     {/* PDF Content */}
-                    {extractedText.map((line, i) => (
-                      <div
-                        key={i}
-                        className={`relative z-10 ${
-                          line.startsWith("[") || line.startsWith("DOCUMENT") ? "text-crimson/70 font-semibold" : ""
-                        } ${line.startsWith("|") || line.startsWith("─") ? "text-pure-black/50" : ""} ${
-                          /^\d\./.test(line) || line.startsWith("•") ? "font-semibold text-pure-black mt-2" : ""
-                        }`}
-                      >
-                        {line || <br />}
+                    {extractedText.length === 0 && !isScanning ? (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-crimson/50 font-mono text-sm tracking-wider">No Data Ingested</span>
                       </div>
-                    ))}
+                    ) : (
+                      extractedText.map((line, i) => (
+                        <div
+                          key={i}
+                          className={`relative z-10 ${
+                            line.startsWith("[") || line.startsWith("DOCUMENT") ? "text-crimson/70 font-semibold" : ""
+                          } ${line.startsWith("|") || line.startsWith("─") ? "text-pure-black/50" : ""} ${
+                            /^\d\./.test(line) || line.startsWith("•") ? "font-semibold text-pure-black mt-2" : ""
+                          }`}
+                        >
+                          {line || <br />}
+                        </div>
+                      ))
+                    )}
 
                     {/* Bounding Boxes */}
                     {currentBoxes.map((box, i) => (
@@ -339,18 +289,22 @@ const MultimodalVision = () => {
                 Extraction Log
               </h3>
               <div className="space-y-2 font-mono text-xs">
-                {extractionLogs.map((log, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="text-pure-black/50">{log.time}</span>
-                    <span className="text-pure-black/80">{log.msg}</span>
-                    <span className={`ml-auto ${i < visibleLogs ? "text-graph-green font-bold" : "text-crimson animate-pulse"}`}>
-                      {i < visibleLogs ? "✓" : "⟳"}
-                    </span>
-                  </div>
-                ))}
+                {extractionLogs.length === 0 ? (
+                  <div className="text-crimson/50 text-center py-4">No Data Ingested</div>
+                ) : (
+                  extractionLogs.map((log, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="text-pure-black/50">{log.time}</span>
+                      <span className="text-pure-black/80">{log.msg}</span>
+                      <span className={`ml-auto ${i < visibleLogs ? "text-graph-green font-bold" : "text-crimson animate-pulse"}`}>
+                        {i < visibleLogs ? "✓" : "⟳"}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </FloatingPanel>
 

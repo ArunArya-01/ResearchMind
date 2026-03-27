@@ -29,35 +29,7 @@ const generateNodes = (count: number) => {
   return nodes;
 };
 
-const manuscriptLines = [
-  "SYNTHESIS REPORT",
-  "═══════════════════════════════════",
-  "",
-  "Title: Aircraft Engine RUL Prediction:",
-  "       Predictive Maintenance using LSTM & XAI",
-  "",
-  "Authors: ResearchMind Synthesis Engine v2.4",
-  "Date: April 2026",
-  "",
-  "ABSTRACT",
-  "───────────────────────────────────",
-  "This synthesis examines the evidence for aviation safety",
-  "and predictive maintenance, with particular focus on",
-  "turbofan engines and Long Short-Term Memory (LSTM) networks.",
-  "Through analysis of 142 flights and adversarial debate,",
-  "we identify a critical discovery gap in explainable AI",
-  "for real-time flight data.",
-  "",
-  "KEY FINDINGS",
-  "───────────────────────────────────",
-  "1. Strong evidence for LSTM accuracy in RUL prediction",
-  "2. Limited evidence for XAI in pilot dashboards",
-  "3. Discovery gap identified: need for real-time",
-  "   transparent prognostics in commercial aviation",
-  "",
-  "CONFIDENCE: HIGH (94.2%)",
-  "NOVELTY SCORE: EXCELLENT (91.5%)",
-];
+// Mock data removed in favor of dynamic WebSocket stream
 
 const SynthesisLab = () => {
   const [zoomedIn, setZoomedIn] = useState(false);
@@ -89,10 +61,10 @@ const SynthesisLab = () => {
         if (storedKeywords.length > 0) {
           setPdfKeywords(storedKeywords);
         } else {
-          setPdfKeywords(["Turbofan", "RUL", "LSTM", "Aviation Safety", "Explainable AI"]);
+          setPdfKeywords([]);
         }
       } catch (e) {
-        setPdfKeywords(["Turbofan", "RUL", "LSTM", "Aviation Safety", "Explainable AI"]);
+        setPdfKeywords([]);
       }
     };
 
@@ -318,14 +290,18 @@ const SynthesisLab = () => {
                 <span className="text-bone/40 font-mono text-xs ml-auto">Agent Alpha</span>
               </div>
               <div className="space-y-3 font-mono text-xs max-h-[250px] overflow-y-auto">
-                {visionaryLogs.map((msg, i) => (
-                  <div key={i}>
-                    <span className="text-bone/40">{msg.time}</span>
-                    <p className={`text-bone mt-0.5 ${msg.msg.startsWith("INSIGHT") ? "text-sky-blue font-bold" : ""}`}>
-                      {msg.msg}
-                    </p>
-                  </div>
-                ))}
+                {visionaryLogs.length === 0 ? (
+                  <div className="text-crimson/50 text-center py-6">No Data Ingested</div>
+                ) : (
+                  visionaryLogs.map((msg, i) => (
+                    <div key={i}>
+                      <span className="text-bone/40">{msg.time}</span>
+                      <p className={`text-bone mt-0.5 ${msg.msg.startsWith("INSIGHT") ? "text-sky-blue font-bold" : ""}`}>
+                        {msg.msg}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </FloatingPanel>
@@ -339,44 +315,35 @@ const SynthesisLab = () => {
                 <span className="text-bone/40 font-mono text-xs ml-auto">Agent Beta</span>
               </div>
               <div className="space-y-3 font-mono text-xs max-h-[250px] overflow-y-auto">
-                {skepticLogs.map((msg, i) => (
-                  <div key={i}>
-                    <span className="text-crimson/60">{msg.time}</span>
-                    <p className={`text-bone mt-0.5 ${msg.msg.startsWith("WARNING") || msg.msg.startsWith("CHALLENGE") ? "text-crimson font-bold" : ""}`}>
-                      {msg.msg}
-                    </p>
-                  </div>
-                ))}
+                {skepticLogs.length === 0 ? (
+                  <div className="text-crimson/50 text-center py-6">No Data Ingested</div>
+                ) : (
+                  skepticLogs.map((msg, i) => (
+                    <div key={i}>
+                      <span className="text-crimson/60">{msg.time}</span>
+                      <p className={`text-bone mt-0.5 ${msg.msg.startsWith("WARNING") || msg.msg.startsWith("CHALLENGE") ? "text-crimson font-bold" : ""}`}>
+                        {msg.msg}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </FloatingPanel>
         </div>
 
         {/* Final Manuscript */}
-        <FloatingPanel z={60} className="max-w-2xl mx-auto p-10 relative overflow-hidden border border-crimson min-h-[400px] overflow-y-auto max-h-[600px]">
-          <div className="flex items-center gap-2 mb-6 relative z-10">
-            <FileText className="w-5 h-5 text-pure-black/50" />
-            <span className="text-pure-black font-display font-semibold text-sm">Final Manuscript</span>
-          </div>
-          <div className="font-mono text-xs leading-relaxed text-pure-black/70 space-y-0.5 relative z-10">
-            {finalReportContent ? (
+        {finalReportContent && (
+          <FloatingPanel z={60} className="max-w-2xl mx-auto p-10 relative overflow-hidden border border-crimson min-h-[400px] overflow-y-auto max-h-[600px]">
+            <div className="flex items-center gap-2 mb-6 relative z-10">
+              <FileText className="w-5 h-5 text-pure-black/50" />
+              <span className="text-pure-black font-display font-semibold text-sm">Final Manuscript</span>
+            </div>
+            <div className="font-mono text-xs leading-relaxed text-pure-black/70 space-y-0.5 relative z-10">
               <div className="whitespace-pre-wrap">{finalReportContent}</div>
-            ) : (
-              manuscriptLines.map((line, i) => (
-                <div
-                  key={i}
-                  className={`${
-                    line === "SYNTHESIS REPORT" ? "text-pure-black font-bold text-lg font-display" : ""
-                  } ${line.startsWith("═") || line.startsWith("───") ? "text-pure-black/20" : ""} ${
-                    line.startsWith("KEY") || line.startsWith("ABSTRACT") ? "text-pure-black font-bold mt-2" : ""
-                  } ${line.startsWith("CONFIDENCE") || line.startsWith("NOVELTY") ? "text-crimson font-semibold" : ""}`}
-                >
-                  {line || <br />}
-                </div>
-              ))
-            )}
-          </div>
-        </FloatingPanel>
+            </div>
+          </FloatingPanel>
+        )}
       </div>
     </div>
   );
