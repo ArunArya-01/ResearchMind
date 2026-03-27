@@ -80,53 +80,17 @@ const MultimodalVision = () => {
         localStorage.setItem("pdf_active", "true");
         try {
           const resData = await res.json();
-          let parsedArray: any[] = [];
-          if (resData.data?.elements && Array.isArray(resData.data.elements)) {
-            parsedArray = resData.data.elements;
-          } else if (resData.data && Array.isArray(resData.data)) {
-            parsedArray = resData.data;
-          }
           const documentText = resData.data?.text || "";
+          const elementsInfo = resData.data?.elements || { pages: 0, references: 0 };
+          const backendKeywords = resData.data?.keywords || [];
 
-          let charts = 0;
-          let tables = 0;
-          let graphs = 0;
           const newLogs = [
             { time: "00:01.2", msg: `File ${selectedFile.name} parsed` },
-            { time: "00:02.8", msg: "Visual elements extracted" }
+            { time: "00:02.8", msg: "Text structure extracted via PyMuPDF" }
           ];
 
-          let customKeywords: string[] = [];
-          const newBoxes: any[] = [];
-
-          if (Array.isArray(parsedArray)) {
-            parsedArray.forEach((item, idx) => {
-              if (item.type === "chart") charts++;
-              if (item.type === "table") tables++;
-              if (item.type === "graph") graphs++;
-
-              if (item.coordinates) {
-                newBoxes.push({
-                   top: `${item.coordinates.y * 100}%`,
-                   left: `${item.coordinates.x * 100}%`,
-                   width: `${item.coordinates.width * 100}%`,
-                   height: `${item.coordinates.height * 100}%`,
-                   label: `${item.type} Detected`,
-                   type: item.type
-                });
-              }
-
-              newLogs.push({ time: `00:0${3 + idx}.1`, msg: `Found ${item.type} on page ${item.page || 1}` });
-            });
-
-            const words = parsedArray.map((i: any) => i.description || i.title || "").join(" ").split(" ").filter((w: string) => w && w.length > 3);
-            if (words.length > 0) {
-              customKeywords = Array.from(new Set(words)).slice(0, 10);
-            }
-          }
-
-          if (customKeywords.length > 0) {
-             localStorage.setItem("pdf_keywords", JSON.stringify(customKeywords));
+          if (backendKeywords.length > 0) {
+             localStorage.setItem("pdf_keywords", JSON.stringify(backendKeywords));
           } else {
              localStorage.setItem("pdf_keywords", JSON.stringify([]));
           }
@@ -134,18 +98,19 @@ const MultimodalVision = () => {
           localStorage.setItem("pdf_upload_time", Date.now().toString());
 
           setExtractedText(documentText);
-          setCurrentBoxes(newBoxes);
+          setCurrentBoxes([]);
 
+          newLogs.push({ time: `00:05.1`, msg: `Found ${elementsInfo.pages} pages and ${elementsInfo.references} references` });
           newLogs.push({ time: `00:10.0`, msg: "Multimodal extraction complete" });
           setExtractionLogs(newLogs);
 
           setElementsFound([
-            { label: "Charts", count: charts },
-            { label: "Tables", count: tables },
-            { label: "Graphs", count: graphs },
-            { label: "Total Elements", count: parsedArray.length || 0 },
-            { label: "Pages Scanned", count: parsedArray.length > 0 ? (parsedArray[parsedArray.length - 1].page || 1) : 1 },
-            { label: "References", count: 0 },
+            { label: "Charts", count: 0 },
+            { label: "Tables", count: 0 },
+            { label: "Graphs", count: 0 },
+            { label: "Total Elements", count: (elementsInfo.pages || 0) + (elementsInfo.references || 0) },
+            { label: "Pages Scanned", count: elementsInfo.pages || 0 },
+            { label: "References", count: elementsInfo.references || 0 },
           ]);
 
         } catch (e) {

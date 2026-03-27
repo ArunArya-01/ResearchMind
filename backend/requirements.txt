@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-pdf2image
+PyMuPDF
 google-generativeai
 networkx
 websockets

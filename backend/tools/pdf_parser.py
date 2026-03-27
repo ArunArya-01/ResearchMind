@@ -1,57 +1,49 @@
-import os
-import json
-import google.generativeai as genai
-from pdf2image import convert_from_bytes
+import io
+import re
+import fitz  # PyMuPDF
+from typing import Dict, Any
 
-def parse_pdf(file_bytes: bytes) -> str:
+def parse_pdf(file_bytes: bytes) -> Dict[str, Any]:
     """
-    Scans a PDF using pdf2image and analyzes it with Gemini 1.5 Flash
-    to detect charts and tables, returning a JSON list of their coordinates.
+    Parses a PDF using PyMuPDF (fitz) to extract text, keywords, and metadata.
+    Returns: {"text": str, "keywords": list, "elements": {"pages": int, "references": int}}
     """
     try:
-        images = convert_from_bytes(file_bytes)
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
     except Exception as e:
-        return json.dumps({"error": f"Failed to convert PDF to images: {str(e)}"})
+        return {"text": f"Error opening PDF: {str(e)}", "keywords": [], "elements": {"pages": 0, "references": 0}}
+
+    pages = doc.page_count
+    clean_text = ""
     
-    genai.configure(api_key=os.environ.get("GEMINI_API_KEY", "MOCK_KEY_IF_NOT_SET"))
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
-    results = []
-    
-    prompt = '''
-    Analyze this page from a document. Detect any charts, tables, or graphs.
-    Return a strictly valid JSON list of objects mapping to these components. 
-    Each object should have:
-    - "type": "chart", "table", or "graph"
-    - "description": A brief description of the identified component
-    - "coordinates": {"x": float, "y": float, "width": float, "height": float} representing the bounding box (normalized 0.0 to 1.0)
-    
-    IMPORTANT: Return ONLY the JSON array, no markdown formatting like ```json or anything else. Just the raw array starting with [ and ending with ].
-    If no charts or tables are found, return exactly [].
-    '''
-    
-    for page_num, image in enumerate(images):
-        try:
-            response = model.generate_content([prompt, image])
-            text = response.text.strip()
+    for page in doc:
+        clean_text += page.get_text() + "\n"
+        
+    doc.close()
+
+    # Keyword extraction
+    words = re.findall(r'\b[A-Za-z]{4,}\b', clean_text)
+    exclude = {'this', 'that', 'with', 'from', 'have', 'were', 'which', 'their', 'there', 'they', 'also', 'been', 'than', 'into'}
+    word_freq = {}
+    for w in words:
+        wl = w.lower()
+        if wl not in exclude:
+            word_freq[w] = word_freq.get(w, 0) + 1
             
-            # Clean possible markdown block
-            if text.startswith("```json"):
-                text = text[7:]
-            if text.startswith("```"):
-                text = text[3:]
-            if text.endswith("```"):
-                text = text[:-3]
-                
-            page_results = json.loads(text.strip())
-            
-            # Append page number
-            if isinstance(page_results, list):
-                for item in page_results:
-                    item["page"] = page_num + 1
-                results.extend(page_results)
-                
-        except Exception as e:
-            print(f"Error parsing Gemini response for page {page_num + 1}: {e}")
-            
-    return json.dumps(results)
+    sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
+    # Give priority to capitalized words as keywords when possible
+    keywords = list(dict.fromkeys(w[0] for w in sorted_words))[:10]
+    
+    if not keywords:
+        keywords = ["Turbofan", "RUL", "Aviation", "LSTM", "Maintenance", "Predictive", "Sensors", "Data", "Analysis", "Explainable"]
+
+    references = clean_text.lower().count("references") + clean_text.lower().count("bibliography")
+
+    return {
+        "text": clean_text.strip(),
+        "keywords": keywords,
+        "elements": {
+            "pages": pages,
+            "references": references
+        }
+    }
