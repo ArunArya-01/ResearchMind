@@ -104,6 +104,7 @@ const MultimodalVision = () => {
       });
       if (res.ok) {
         setIsScanning(true);
+        localStorage.setItem("pdf_active", "true");
       } else {
         console.error("Upload failed");
         setFile(null);

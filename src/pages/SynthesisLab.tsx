@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import FloatingPanel from "../components/FloatingPanel";
-import { Rocket, ShieldAlert, FileText, Play, Loader2 } from "lucide-react";
+import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw } from "lucide-react";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? `http://${window.location.hostname}:8000`;
@@ -66,8 +66,9 @@ const SynthesisLab = () => {
   const [visionaryLogs, setVisionaryLogs] = useState<{ time: string; msg: string }[]>([]);
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([]);
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
+  const [pdfActive, setPdfActive] = useState(false);
 
-  useEffect(() => {
+  const fetchNodes = useCallback(() => {
     fetch(`${API_BASE_URL}/nodes`)
       .then(res => {
         if (!res.ok) throw new Error("Failed");
@@ -78,6 +79,11 @@ const SynthesisLab = () => {
         setNodes(generateNodes(200));
       });
   }, []);
+
+  useEffect(() => {
+    setPdfActive(localStorage.getItem("pdf_active") === "true");
+    fetchNodes();
+  }, [fetchNodes]);
 
   const handleStartDiscovery = useCallback(() => {
     setZoomedIn(true);
@@ -134,9 +140,15 @@ const SynthesisLab = () => {
 
         {/* Knowledge Graph */}
         <FloatingPanel z={50} className="mb-8 overflow-hidden border border-crimson">
-          <div className="p-4 border-b border-crimson/20 flex items-center gap-2 bg-bone">
+          <div className="p-4 border-b border-crimson flex items-center gap-2 bg-obsidian">
             <div className="w-2 h-2 rounded-full bg-crimson animate-pulse" />
-            <span className="text-pure-black font-mono text-xs">Knowledge Graph · {nodes?.length ?? 0} nodes</span>
+            <span className="text-bone font-mono text-xs">Knowledge Graph · {nodes?.length ?? 0} nodes</span>
+            <button 
+              onClick={fetchNodes}
+              className="ml-auto px-3 py-1.5 flex items-center gap-2 text-xs font-mono text-crimson border border-crimson/50 rounded hover:bg-crimson/10 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" /> Sync
+            </button>
           </div>
           <div className="relative min-h-[400px] bg-obsidian">
             {!nodes ? (
@@ -171,15 +183,15 @@ const SynthesisLab = () => {
               </defs>
               <circle cx={400} cy={300} r={80} fill="url(#redGlow)" />
 
-              {/* Nodes - bright white */}
+              {/* Nodes - dynamic */}
               {nodes?.map((node) => (
                 <circle
                   key={node.id}
                   cx={node?.x ?? 0}
                   cy={node?.y ?? 0}
                   r={node?.size ?? 0}
-                  fill="hsl(0 0% 100% / 0.8)"
-                  className="cursor-pointer hover:fill-crimson transition-colors"
+                  fill={pdfActive ? "hsl(354 96% 43% / 0.9)" : "hsl(0 0% 100% / 0.8)"}
+                  className={`cursor-pointer overflow-visible transition-all duration-1000 ease-in-out hover:fill-bone/50 ${pdfActive ? "animate-[pulse_3s_ease-in-out_infinite] drop-shadow-[0_0_8px_rgba(217,4,41,0.8)]" : "drop-shadow-[0_0_5px_rgba(253,253,253,0.8)]"}`}
                   onMouseEnter={(e) => {
                     const target = e.target as SVGCircleElement;
                     target.setAttribute("r", ((node?.size ?? 0) * 1.5).toString());
