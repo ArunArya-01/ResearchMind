@@ -33,7 +33,7 @@ const generateNodes = (count: number) => {
 
 const SynthesisLab = () => {
   const [zoomedIn, setZoomedIn] = useState(false);
-  const [nodes, setNodes] = useState<{ id: number; x: number; y: number; size: number; connections: number[] }[] | null>(null);
+  const [nodes, setNodes] = useState<{ id: number; x: number; y: number; size: number; connections: number[] }[] | null>([]);
   const [visionaryLogs, setVisionaryLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
@@ -106,16 +106,15 @@ const SynthesisLab = () => {
     setZoomedIn(true);
     setTimeout(() => setZoomedIn(false), 4000);
 
-    setVisionaryLogs([{ time: "T+0.00s", msg: "Connecting to swarm..." }]);
-    setSkepticLogs([{ time: "T+0.00s", msg: "Connecting to swarm..." }]);
+    setVisionaryLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
+    setSkepticLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
     setFinalReportContent(null);
 
     const ws = new WebSocket("ws://localhost:8000/ws/swarm");
     ws.onopen = () => {
       ws.send(JSON.stringify({
-        command: "start",
-        topic: pdfKeywords.length > 0 ? pdfKeywords.slice(0, 3).join(", ") : "General Document Analysis",
-        gap_data: { red_anomalies: [] }
+        type: "start",
+        topic: "Aircraft Engine RUL"
       }));
     };
     ws.onmessage = (event) => {

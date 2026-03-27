@@ -44,6 +44,8 @@ class SwarmOrchestrator:
         await self.log_callback(json.dumps(payload))
 
     async def run_swarm(self, discovery_gap_data: dict, topic: str):
+        print("DEBUG: Alpha Agent starting...")
+        print(f"DEBUG: Using model: {self.model.model_name}")
         await self.log("System", "Initializing Adversarial Swarm...")
         
         context = str(discovery_gap_data)

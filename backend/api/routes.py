@@ -40,8 +40,8 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             msg = json.loads(data)
             
-            if msg.get("command") == "start":
-                topic = msg.get("topic", "General Research")
+            if msg.get("type") == "start":
+                topic = msg.get("topic", "Aircraft Engine RUL")
                 
                 # Run real orchestrator
                 text_context = PROCESSED_DATA.get("text", "")
