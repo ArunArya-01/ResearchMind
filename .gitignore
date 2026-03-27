@@ -1,4 +1,96 @@
-node_modules/
-.env
-
+# =========================
+# macOS
+# =========================
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing / coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# Type checkers
+.mypy_cache/
+.pyre/
+
+# Jupyter
+.ipynb_checkpoints
+
+# =========================
+# Node.js
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.*
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+logs/
+*.log
+
+# =========================
+# Go (Golang)
+# =========================
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Coverage
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace
+go.work
+go.work.sum
+
+# =========================
+# General
+# =========================
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
