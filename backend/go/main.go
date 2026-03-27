@@ -257,6 +257,9 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func copyHeaders(dst, src http.Header) {
 	for k, vv := range src {
+		if k == "Access-Control-Allow-Origin" || k == "Access-Control-Allow-Methods" || k == "Access-Control-Allow-Headers" {
+			continue
+		}
 		for _, v := range vv {
 			dst.Add(k, v)
 		}

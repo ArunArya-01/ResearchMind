@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import FloatingPanel from "../components/FloatingPanel";
 import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw } from "lucide-react";
+import { motion } from "framer-motion";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? `http://${window.location.hostname}:8000`;
@@ -67,8 +68,10 @@ const SynthesisLab = () => {
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([]);
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
   const [pdfActive, setPdfActive] = useState(false);
+  const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
 
   const fetchNodes = useCallback(() => {
+    setNodes(null);
     fetch(`${API_BASE_URL}/nodes`)
       .then(res => {
         if (!res.ok) throw new Error("Failed");
@@ -82,6 +85,9 @@ const SynthesisLab = () => {
 
   useEffect(() => {
     setPdfActive(localStorage.getItem("pdf_active") === "true");
+    try {
+      setPdfKeywords(JSON.parse(localStorage.getItem("pdf_keywords") || "[]"));
+    } catch (e) {}
     fetchNodes();
   }, [fetchNodes]);
 
@@ -161,8 +167,11 @@ const SynthesisLab = () => {
                 {/* Connections - ultra-thin white */}
                 {nodes?.map((node) =>
                   node?.connections?.map((target, ci) => (
-                    <line
+                    <motion.line
                       key={`${node.id}-${ci}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 1, delay: 1.5 }}
                       x1={node?.x ?? 0}
                       y1={node?.y ?? 0}
                       x2={nodes[target]?.x ?? 0}
@@ -184,24 +193,72 @@ const SynthesisLab = () => {
               <circle cx={400} cy={300} r={80} fill="url(#redGlow)" />
 
               {/* Nodes - dynamic */}
-              {nodes?.map((node) => (
-                <circle
-                  key={node.id}
-                  cx={node?.x ?? 0}
-                  cy={node?.y ?? 0}
-                  r={node?.size ?? 0}
-                  fill={pdfActive ? "hsl(354 96% 43% / 0.9)" : "hsl(0 0% 100% / 0.8)"}
-                  className={`cursor-pointer overflow-visible transition-all duration-1000 ease-in-out hover:fill-bone/50 ${pdfActive ? "animate-[pulse_3s_ease-in-out_infinite] drop-shadow-[0_0_8px_rgba(217,4,41,0.8)]" : "drop-shadow-[0_0_5px_rgba(253,253,253,0.8)]"}`}
-                  onMouseEnter={(e) => {
-                    const target = e.target as SVGCircleElement;
-                    target.setAttribute("r", ((node?.size ?? 0) * 1.5).toString());
-                  }}
-                  onMouseLeave={(e) => {
-                    const target = e.target as SVGCircleElement;
-                    target.setAttribute("r", (node?.size ?? 0).toString());
-                  }}
-                />
-              ))}
+              {nodes?.map((node, i) => {
+                const isKeywordNode = pdfActive && i < 10 && i < pdfKeywords.length;
+                const keywordText = isKeywordNode ? pdfKeywords[i] : null;
+                const targetR = isKeywordNode ? (node.size * 2) : node.size;
+                
+                return (
+                  <g key={node.id}>
+                    <motion.circle
+                      initial={{ 
+                        cx: 400, 
+                        cy: 300, 
+                        r: 0 
+                      }}
+                      animate={{ 
+                        cx: [400, 400 + (node.x - 400) * 1.2, node.x], 
+                        cy: [300, 300 + (node.y - 300) * 1.2, node.y], 
+                        r: [0, targetR * 1.5, targetR] 
+                      }}
+                      transition={{ 
+                        duration: 1.5,
+                        ease: "easeOut",
+                        times: [0, 0.6, 1],
+                        delay: Math.random() * 0.2
+                      }}
+                      fill={pdfActive ? "hsl(354 96% 43% / 0.9)" : "hsl(0 0% 100% / 0.8)"}
+                      className={`cursor-pointer overflow-visible hover:fill-bone/50 ${
+                        isKeywordNode 
+                          ? "drop-shadow-[0_0_12px_rgba(217,4,41,1)]" 
+                          : pdfActive 
+                            ? "animate-[pulse_3s_ease-in-out_infinite] drop-shadow-[0_0_8px_rgba(217,4,41,0.8)]" 
+                            : "drop-shadow-[0_0_5px_rgba(253,253,253,0.8)]"
+                      }`}
+                      onMouseEnter={(e: any) => {
+                        const target = e.target as SVGCircleElement;
+                        target.setAttribute("r", (targetR * 1.5).toString());
+                      }}
+                      onMouseLeave={(e: any) => {
+                        const target = e.target as SVGCircleElement;
+                        target.setAttribute("r", targetR.toString());
+                      }}
+                    />
+                    {isKeywordNode && (
+                      <motion.text
+                        initial={{ opacity: 0, x: 400, y: 300 }}
+                        animate={{ 
+                          opacity: 1, 
+                          x: [400, 400 + (node.x - 400) * 1.2 + targetR + 5, node.x + targetR + 6], 
+                          y: [300, 300 + (node.y - 300) * 1.2 + 3, node.y + 3] 
+                        }}
+                        transition={{ 
+                          duration: 1.5,
+                          ease: "easeOut",
+                          times: [0, 0.6, 1],
+                          delay: 0.5 + Math.random() * 0.3 
+                        }}
+                        fill="hsl(0 0% 100% / 0.9)"
+                        fontSize={10}
+                        fontFamily="var(--font-mono)"
+                        className="pointer-events-none drop-shadow-[0_0_4px_rgba(0,0,0,0.8)]"
+                      >
+                        {keywordText}
+                      </motion.text>
+                    )}
+                  </g>
+                );
+              })}
 
               {/* Discovery Gap - Deep Red Pulsing Orb */}
               <circle

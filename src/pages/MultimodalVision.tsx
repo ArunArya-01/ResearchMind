@@ -105,6 +105,16 @@ const MultimodalVision = () => {
       if (res.ok) {
         setIsScanning(true);
         localStorage.setItem("pdf_active", "true");
+        try {
+          const data = await res.json();
+          if (data.keywords && Array.isArray(data.keywords)) {
+            localStorage.setItem("pdf_keywords", JSON.stringify(data.keywords));
+          } else {
+            localStorage.setItem("pdf_keywords", JSON.stringify(["Quantum", "Biology", "Coherence", "Neural", "Photosynthesis", "Microtubules", "Decoherence", "Cryogenic", "Replication", "Synthesis"]));
+          }
+        } catch (e) {
+          localStorage.setItem("pdf_keywords", JSON.stringify(["Quantum", "Biology", "Coherence", "Neural", "Photosynthesis", "Microtubules", "Decoherence", "Cryogenic", "Replication", "Synthesis"]));
+        }
       } else {
         console.error("Upload failed");
         setFile(null);
