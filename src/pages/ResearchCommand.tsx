@@ -1,20 +1,33 @@
+import { useState, useEffect } from "react";
 import FloatingPanel from "../components/FloatingPanel";
 import ParallaxContainer from "../components/ParallaxContainer";
 import RadialGauge from "../components/RadialGauge";
-import { Atom, BookOpen, Database, FileSearch, Globe, Layers, Microscope, Zap } from "lucide-react";
-
-const discoveries = [
-  { title: "Quantum Coherence in Photosynthesis", domain: "Biophysics", progress: 87, icon: Atom, papers: 142 },
-  { title: "Neural Scaling Laws", domain: "Machine Learning", progress: 63, icon: Layers, papers: 89 },
-  { title: "CRISPR Off-Target Effects", domain: "Genomics", progress: 45, icon: Microscope, papers: 234 },
-  { title: "Dark Matter Candidates", domain: "Astrophysics", progress: 72, icon: Globe, papers: 312 },
-  { title: "Topological Insulators", domain: "Condensed Matter", progress: 91, icon: Zap, papers: 178 },
-  { title: "Protein Folding Dynamics", domain: "Structural Biology", progress: 58, icon: Database, papers: 201 },
-  { title: "LLM Reasoning Gaps", domain: "AI Safety", progress: 34, icon: FileSearch, papers: 67 },
-  { title: "mRNA Stability Patterns", domain: "Molecular Bio", progress: 79, icon: BookOpen, papers: 156 },
-];
+import { BookOpen } from "lucide-react";
 
 const ResearchCommand = () => {
+  const [recentUploads, setRecentUploads] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("recent_uploads") || "[]");
+      setRecentUploads(stored);
+    } catch (e) {
+      setRecentUploads([]);
+    }
+  }, []);
+
+  const papersProcessed = recentUploads.length;
+  const connectionsFound = recentUploads.reduce((sum, u) => sum + (u.references || 0), 0);
+  const totalElements = recentUploads.reduce((sum, u) => sum + (u.elements || 0), 0);
+  const discoveryScore = (papersProcessed * 10) + (totalElements * 0.5);
+
+  const statsConfig = [
+    { label: "Active Threads", value: papersProcessed > 0 ? "1" : "0" },
+    { label: "Papers Processed", value: papersProcessed.toString() },
+    { label: "Connections Found", value: connectionsFound.toString() },
+    { label: "Discovery Score", value: discoveryScore.toFixed(1) },
+  ];
+
   return (
     <div className="min-h-screen pt-24 px-6 pb-12">
       <ParallaxContainer>
@@ -27,19 +40,14 @@ const ResearchCommand = () => {
               Research <span className="text-crimson">Command</span>
             </h1>
             <p className="text-bone/40 font-mono text-sm">
-              8 active discoveries · 1,379 papers indexed · 3 synthesis complete
+              Live Synthesis Tracking · Reacting to Ingestion Streams
             </p>
           </div>
 
           {/* Stats Bar */}
           <FloatingPanel z={40} className="mb-10 p-4 flex items-center justify-between">
             <div className="flex items-center gap-8">
-              {[
-                { label: "Active Threads", value: "8" },
-                { label: "Papers Processed", value: "1,379" },
-                { label: "Connections Found", value: "2,847" },
-                { label: "Discovery Score", value: "94.2" },
-              ].map((stat) => (
+              {statsConfig.map((stat) => (
                 <div key={stat.label} className="text-center">
                   <p className="text-pure-black font-display text-2xl font-bold">{stat.value}</p>
                   <p className="text-pure-black/40 font-mono text-xs">{stat.label}</p>
@@ -50,37 +58,45 @@ const ResearchCommand = () => {
 
           {/* Discovery Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {discoveries.map((disc) => {
-              const Icon = disc.icon;
-              return (
-                <div
-                  key={disc.title}
-                  className="glass-panel p-5 cursor-pointer group relative overflow-hidden"
-                  style={{ transformStyle: "preserve-3d", transform: "translateZ(50px)" }}
-                >
-                  <div className="flex items-start justify-between mb-4 relative z-10">
-                    <div className="p-2 rounded-xl bg-background">
-                      <Icon className="w-5 h-5 text-crimson" />
+            {recentUploads.length === 0 ? (
+              <div className="glass-panel p-5 col-span-1 md:col-span-2 lg:col-span-4 text-center">
+                <h3 className="text-crimson font-display font-semibold text-lg flex justify-center items-center h-full">
+                  Ready for Ingestion - No papers processed yet.
+                </h3>
+              </div>
+            ) : (
+              recentUploads.map((disc, idx) => {
+                const Icon = BookOpen;
+                return (
+                  <div
+                    key={idx}
+                    className="glass-panel p-5 cursor-pointer group relative overflow-hidden"
+                    style={{ transformStyle: "preserve-3d", transform: "translateZ(50px)" }}
+                  >
+                    <div className="flex items-start justify-between mb-4 relative z-10">
+                      <div className="p-2 rounded-xl bg-background">
+                        <Icon className="w-5 h-5 text-crimson" />
+                      </div>
+                      <RadialGauge progress={disc.progress} size={56} />
                     </div>
-                    <RadialGauge progress={disc.progress} size={56} />
-                  </div>
 
-                  <h3 className="text-pure-black font-display font-semibold text-sm mb-1 leading-tight relative z-10">
-                    {disc.title}
-                  </h3>
-                  <p className="text-pure-black/40 font-mono text-xs mb-3 relative z-10">{disc.domain}</p>
+                    <h3 className="text-pure-black font-display font-semibold text-sm mb-1 leading-tight relative z-10 truncate" title={disc.title}>
+                      {disc.title}
+                    </h3>
+                    <p className="text-pure-black/40 font-mono text-xs mb-3 relative z-10">{disc.domain}</p>
 
-                  <div className="flex items-center justify-between relative z-10">
-                    <span className="text-pure-black/30 font-mono text-xs">
-                      {disc.papers} papers
-                    </span>
-                    <div
-                      className="w-2 h-2 rounded-full bg-crimson animate-pulse"
-                    />
+                    <div className="flex items-center justify-between relative z-10">
+                      <span className="text-pure-black/30 font-mono text-xs">
+                        {disc.elements} elements
+                      </span>
+                      <div
+                        className="w-2 h-2 rounded-full bg-crimson animate-pulse"
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       </ParallaxContainer>

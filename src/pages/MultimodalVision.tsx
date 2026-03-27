@@ -115,6 +115,22 @@ const MultimodalVision = () => {
             { label: "References", count: elementsInfo.references || 0 },
           ]);
 
+          try {
+            const existingUploads = JSON.parse(localStorage.getItem("recent_uploads") || "[]");
+            const totalElements = (elementsInfo.pages || 0) + (elementsInfo.references || 0);
+            const newUpload = {
+              title: selectedFile.name,
+              domain: backendKeywords.length > 0 ? backendKeywords[0] : "General Analysis",
+              elements: totalElements,
+              references: elementsInfo.references || 0,
+              progress: Math.min(Math.round((totalElements / 50) * 100), 100),
+              papers: 1
+            };
+            localStorage.setItem("recent_uploads", JSON.stringify([...existingUploads, newUpload]));
+          } catch(e) {
+            console.error("Storage Error", e);
+          }
+
         } catch (e) {
           localStorage.setItem("pdf_keywords", JSON.stringify([]));
           setExtractedText("");
