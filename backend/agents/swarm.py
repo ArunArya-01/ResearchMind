@@ -8,9 +8,35 @@ if api_key:
     genai.configure(api_key=api_key)
 
 class SwarmOrchestrator:
+    def _select_best_model(self) -> str:
+        available_models = []
+        try:
+            for m in genai.list_models():
+                if "generateContent" in getattr(m, "supported_generation_methods", []):
+                    available_models.append(m.name)
+        except Exception:
+            pass
+
+        priorities = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-pro']
+        selected = None
+        for p in priorities:
+            if p in available_models or p.replace('models/', '') in available_models:
+                selected = p
+                break
+                
+        if not selected:
+            if available_models:
+                selected = available_models[0]
+            else:
+                print("CRITICAL: No generative models available for this API key.")
+                selected = 'gemini-1.5-flash-latest'
+                
+        return selected.replace('models/', '')
+
     def __init__(self, log_callback: Callable[[str], Awaitable[Any]]):
         self.log_callback = log_callback
-        self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model_name = self._select_best_model()
+        self.model = genai.GenerativeModel(model_name)
 
     async def log(self, agent_name: str, message: str):
         import json

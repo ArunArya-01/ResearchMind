@@ -34,8 +34,8 @@ const generateNodes = (count: number) => {
 const SynthesisLab = () => {
   const [zoomedIn, setZoomedIn] = useState(false);
   const [nodes, setNodes] = useState<{ id: number; x: number; y: number; size: number; connections: number[] }[] | null>(null);
-  const [visionaryLogs, setVisionaryLogs] = useState<{ time: string; msg: string }[]>([]);
-  const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([]);
+  const [visionaryLogs, setVisionaryLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
+  const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
   const [pdfActive, setPdfActive] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
@@ -72,8 +72,8 @@ const SynthesisLab = () => {
       const currentUploadTime = localStorage.getItem("pdf_upload_time");
       if (currentUploadTime && currentUploadTime !== lastUploadTime) {
          setLastUploadTime(currentUploadTime);
-         setVisionaryLogs([]);
-         setSkepticLogs([]);
+         setVisionaryLogs([{ time: "T+0.00s", msg: "System Ready" }]);
+         setSkepticLogs([{ time: "T+0.00s", msg: "System Ready" }]);
          setFinalReportContent(null);
       }
 

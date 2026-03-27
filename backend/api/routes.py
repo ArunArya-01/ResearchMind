@@ -47,7 +47,7 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
                 text_context = PROCESSED_DATA.get("text", "")
                 
                 if not text_context:
-                    await websocket.send_json({"agent": "System", "message": "Error: No manuscript data found. Please upload a PDF first."})
+                    await websocket.send_json({"agent": "System", "message": "Please upload a file first."})
                     continue
                 
                 async def log_adapter(msg_str: str):
