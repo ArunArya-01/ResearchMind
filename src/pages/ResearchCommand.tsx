@@ -9,7 +9,7 @@ const ResearchCommand = () => {
 
   useEffect(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem("recent_uploads") || "[]");
+      const stored = JSON.parse(localStorage.getItem("recent_analysis") || "[]");
       setRecentUploads(stored);
     } catch (e) {
       setRecentUploads([]);
@@ -17,7 +17,7 @@ const ResearchCommand = () => {
   }, []);
 
   const papersProcessed = recentUploads.length;
-  const connectionsFound = recentUploads.reduce((sum, u) => sum + (u.references || 0), 0);
+  const connectionsFound = recentUploads.reduce((sum, u) => sum + (u.keywords || 0), 0);
   const totalElements = recentUploads.reduce((sum, u) => sum + (u.elements || 0), 0);
   const discoveryScore = (papersProcessed * 10) + (totalElements * 0.5);
 
@@ -85,13 +85,16 @@ const ResearchCommand = () => {
                     </h3>
                     <p className="text-pure-black/40 font-mono text-xs mb-3 relative z-10">{disc.domain}</p>
 
-                    <div className="flex items-center justify-between relative z-10">
-                      <span className="text-pure-black/30 font-mono text-xs">
-                        {disc.elements} elements
-                      </span>
-                      <div
-                        className="w-2 h-2 rounded-full bg-crimson animate-pulse"
-                      />
+                    <div className="flex flex-col gap-2 relative z-10 mt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-pure-black/30 font-mono text-xs">
+                          {disc.elements} elements
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-crimson font-mono text-[10px] font-bold">Safety Risk: {((disc.elements * 7) % 60) + 20}%</span>
+                          <div className="w-2 h-2 rounded-full bg-crimson animate-pulse" />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );

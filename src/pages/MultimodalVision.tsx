@@ -11,6 +11,20 @@ const MultimodalVision = () => {
   const [isDragActive, setIsDragActive] = useState(false);
   const [visibleLogs, setVisibleLogs] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [highlightWord, setHighlightWord] = useState<string>("");
+
+  useEffect(() => {
+    const handleStorage = () => {
+      const hw = localStorage.getItem("highlight_keyword") || "";
+      setHighlightWord(hw);
+    };
+    window.addEventListener("storage", handleStorage);
+    const interval = setInterval(handleStorage, 1000);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      clearInterval(interval);
+    };
+  }, []);
 
   const [extractionLogs, setExtractionLogs] = useState<{ time: string; msg: string }[]>([]);
   const [elementsFound, setElementsFound] = useState<{ label: string; count: number }[]>([
@@ -214,7 +228,13 @@ const MultimodalVision = () => {
                       </div>
                     ) : (
                       <div className="relative z-10 whitespace-pre-wrap">
-                        {extractedText}
+                        {highlightWord && extractedText.toLowerCase().includes(highlightWord.toLowerCase()) 
+                          ? extractedText.split(new RegExp(`(${highlightWord})`, 'gi')).map((part, i) => 
+                              part.toLowerCase() === highlightWord.toLowerCase() 
+                                ? <mark key={i} className="bg-crimson/30 text-crimson font-bold rounded px-1">{part}</mark> 
+                                : part
+                            ) 
+                          : extractedText}
                       </div>
                     )}
 

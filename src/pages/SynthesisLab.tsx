@@ -256,6 +256,12 @@ const SynthesisLab = () => {
                         const target = e.target as SVGCircleElement;
                         target.setAttribute("r", targetR.toString());
                       }}
+                      onClick={() => {
+                        if (keywordText) {
+                          localStorage.setItem("highlight_keyword", keywordText);
+                          window.dispatchEvent(new Event("storage"));
+                        }
+                      }}
                     />
                     {isKeywordNode && (
                       <motion.text
@@ -349,6 +355,7 @@ const SynthesisLab = () => {
           <FloatingPanel z={40} className="!bg-transparent !border-0 !shadow-none">
             <div className="p-5 bg-obsidian border border-crimson/50 rounded-xl shadow-[0_8px_40px_-8px_hsl(0_0%_0%_/_0.8)] backdrop-blur">
               <div className="flex items-center gap-2 mb-4 pb-3 border-b border-crimson/20">
+                <div className="w-2 h-2 rounded-full bg-crimson animate-pulse shadow-[0_0_8px_rgba(217,4,41,0.8)]" />
                 <ShieldAlert className="w-4 h-4 text-crimson" />
                 <span className="text-bone font-mono font-bold text-sm">SKEPTIC</span>
                 <span className="text-bone/40 font-mono text-xs ml-auto">Agent Beta</span>

@@ -98,7 +98,9 @@ class SwarmOrchestrator:
             Hypothesis:
             {hypothesis}
             
-            Perform a stark 'Red-Team' critique. Identify exactly 3 specific flaws, weaknesses, or unsupported claims in the hypothesis.
+            Perform a stark 'Red-Team' critique. PRIORITIZE FINDING SAFETY GAPS.
+            Identify missing variables, outdated datasets, or logic flaws in the uploaded research.
+            Identify exactly 3 specific safety flaws, weaknesses, or unsupported claims.
             Be direct and analytical.
             """
             beta_response = await self._safe_generate(beta_prompt)
@@ -115,6 +117,8 @@ class SwarmOrchestrator:
         Final Critique: {critique}
         
         Write a final 'synthesis_report.md' summarizing the findings, the final hypothesis, and acknowledging the remaining risks. Format it beautifully in Markdown.
+
+        CRITICAL REQUIREMENT: You MUST include a specific section heading exactly titled "<b style="color:crimson;">CRITICAL RESEARCH GAPS</b>" (including the HTML tags) detailing the safety gaps found.
         """
         synthesis_response = await self._safe_generate(synthesis_prompt)
         report = synthesis_response.text.strip()
