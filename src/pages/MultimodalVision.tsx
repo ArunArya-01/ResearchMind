@@ -51,16 +51,28 @@ const MultimodalVision = () => {
   const [visibleLogs, setVisibleLogs] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [extractionLogs, setExtractionLogs] = useState<{ time: string; msg: string }[]>([
+    { time: "00:00.0", msg: "Awaiting document..." }
+  ]);
+  const [elementsFound, setElementsFound] = useState<{ label: string; count: number }[]>([
+    { label: "Text Blocks", count: 0 },
+    { label: "Figures", count: 0 },
+    { label: "Tables", count: 0 },
+    { label: "Equations", count: 0 },
+    { label: "References", count: 0 },
+    { label: "Entities", count: 0 },
+  ]);
+
   useEffect(() => {
     if (isScanning) {
       const interval = setInterval(() => {
-        setVisibleLogs((prev) => Math.min(prev + 1, 7));
+        setVisibleLogs((prev) => Math.min(prev + 1, extractionLogs.length));
       }, 1200);
       return () => clearInterval(interval);
     } else {
       setVisibleLogs(0);
     }
-  }, [isScanning]);
+  }, [isScanning, extractionLogs.length]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -106,12 +118,49 @@ const MultimodalVision = () => {
         setIsScanning(true);
         localStorage.setItem("pdf_active", "true");
         try {
-          const data = await res.json();
-          if (data.keywords && Array.isArray(data.keywords)) {
-            localStorage.setItem("pdf_keywords", JSON.stringify(data.keywords));
-          } else {
-            localStorage.setItem("pdf_keywords", JSON.stringify(["Quantum", "Biology", "Coherence", "Neural", "Photosynthesis", "Microtubules", "Decoherence", "Cryogenic", "Replication", "Synthesis"]));
+          const resData = await res.json();
+          let parsedArray: any[] = [];
+          if (typeof resData.data === 'string') {
+            parsedArray = JSON.parse(resData.data);
+          } else if (Array.isArray(resData.data)) {
+            parsedArray = resData.data;
           }
+
+          let charts = 0;
+          let tables = 0;
+          let graphs = 0;
+          const newLogs = [
+            { time: "00:01.2", msg: `File ${selectedFile.name} parsed` },
+            { time: "00:02.8", msg: "Visual elements extracted" }
+          ];
+
+          if (Array.isArray(parsedArray)) {
+            parsedArray.forEach((item, idx) => {
+              if (item.type === "chart") charts++;
+              if (item.type === "table") tables++;
+              if (item.type === "graph") graphs++;
+              newLogs.push({ time: `00:0${3 + idx}.1`, msg: `Found ${item.type} on page ${item.page || 1}` });
+            });
+            const words = parsedArray.map(i => i.description?.split(" ")[0]).filter(w => w && w.length > 3);
+            if (words.length > 0) {
+              localStorage.setItem("pdf_keywords", JSON.stringify(words));
+            } else {
+              localStorage.setItem("pdf_keywords", JSON.stringify(["Quantum", "Biology", "Coherence", "Neural", "Photosynthesis", "Microtubules", "Decoherence", "Cryogenic", "Replication", "Synthesis"]));
+            }
+          }
+
+          newLogs.push({ time: `00:10.0`, msg: "Multimodal extraction complete" });
+          setExtractionLogs(newLogs);
+
+          setElementsFound([
+            { label: "Charts", count: charts },
+            { label: "Tables", count: tables },
+            { label: "Graphs", count: graphs },
+            { label: "Total Elements", count: parsedArray.length || 0 },
+            { label: "Pages Scanned", count: parsedArray.length > 0 ? (parsedArray[parsedArray.length - 1].page || 1) : 1 },
+            { label: "References", count: 0 },
+          ]);
+
         } catch (e) {
           localStorage.setItem("pdf_keywords", JSON.stringify(["Quantum", "Biology", "Coherence", "Neural", "Photosynthesis", "Microtubules", "Decoherence", "Cryogenic", "Replication", "Synthesis"]));
         }
@@ -238,15 +287,7 @@ const MultimodalVision = () => {
                 Extraction Log
               </h3>
               <div className="space-y-2 font-mono text-xs">
-                {[
-                  { time: "00:01.2", msg: "Document parsed" },
-                  { time: "00:02.8", msg: "Text extracted (34 blocks)" },
-                  { time: "00:04.1", msg: "Figure 1 detected" },
-                  { time: "00:05.3", msg: "Chart data extracted" },
-                  { time: "00:06.7", msg: "Table 1 parsed (2×3)" },
-                  { time: "00:08.2", msg: "Cross-references linked" },
-                  { time: "00:09.5", msg: "Embedding generated" },
-                ].map((log, i) => (
+                {extractionLogs.map((log, i) => (
                   <div
                     key={i}
                     className="flex items-center gap-2"
@@ -266,14 +307,7 @@ const MultimodalVision = () => {
                 Elements Found
               </h3>
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Text Blocks", count: 34 },
-                  { label: "Figures", count: 1 },
-                  { label: "Tables", count: 1 },
-                  { label: "Equations", count: 3 },
-                  { label: "References", count: 28 },
-                  { label: "Entities", count: 47 },
-                ].map((el) => (
+                {elementsFound.map((el) => (
                   <div key={el.label} className="text-center p-2 rounded-xl bg-background/5 border border-crimson/30">
                     <p className="text-pure-black font-display text-lg font-bold">{el.count}</p>
                     <p className="text-pure-black/50 font-mono text-[10px]">{el.label}</p>

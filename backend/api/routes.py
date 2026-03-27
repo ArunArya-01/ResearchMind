@@ -63,6 +63,12 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
 @router.post("/upload/pdf")
 async def upload_pdf(file: UploadFile = File(...)):
     contents = await file.read()
+    
+    import os
+    os.makedirs('data', exist_ok=True)
+    with open(f'data/{file.filename}', 'wb') as f:
+        f.write(contents)
+        
     # This triggers your tool/pdf_parser.py
     json_result = parse_pdf(contents) 
     return {"status": "success", "data": json_result}

@@ -165,6 +165,8 @@ func uploadProxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("Proxying PDF upload: %s to Python...", r.URL.Path)
+
 	upstreamURL := fmt.Sprintf("%s/upload/pdf", pythonHTTPBaseURL())
 	proxyReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, upstreamURL, r.Body)
 	if err != nil {
