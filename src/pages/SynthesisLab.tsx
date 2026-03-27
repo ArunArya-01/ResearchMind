@@ -33,32 +33,30 @@ const manuscriptLines = [
   "SYNTHESIS REPORT",
   "═══════════════════════════════════",
   "",
-  "Title: Quantum Coherence in Biological Systems:",
-  "       A Critical Assessment of Current Evidence",
+  "Title: Aircraft Engine RUL Prediction:",
+  "       Predictive Maintenance using LSTM & XAI",
   "",
   "Authors: ResearchMind Synthesis Engine v2.4",
-  "Date: March 2026",
+  "Date: April 2026",
   "",
   "ABSTRACT",
   "───────────────────────────────────",
-  "This synthesis examines the evidence for quantum",
-  "coherence in biological systems, with particular",
-  "focus on photosynthetic complexes and proposed",
-  "extensions to neural architectures. Through analysis",
-  "of 142 papers and adversarial debate, we identify",
-  "a critical discovery gap in room-temperature",
-  "replication studies.",
+  "This synthesis examines the evidence for aviation safety",
+  "and predictive maintenance, with particular focus on",
+  "turbofan engines and Long Short-Term Memory (LSTM) networks.",
+  "Through analysis of 142 flights and adversarial debate,",
+  "we identify a critical discovery gap in explainable AI",
+  "for real-time flight data.",
   "",
   "KEY FINDINGS",
   "───────────────────────────────────",
-  "1. Strong evidence for quantum effects in",
-  "   photosynthesis at cryogenic temperatures",
-  "2. Limited evidence at biological temperatures",
-  "3. Discovery gap identified: need for in-vivo",
-  "   room-temperature coherence measurements",
+  "1. Strong evidence for LSTM accuracy in RUL prediction",
+  "2. Limited evidence for XAI in pilot dashboards",
+  "3. Discovery gap identified: need for real-time",
+  "   transparent prognostics in commercial aviation",
   "",
-  "CONFIDENCE: MODERATE (67.3%)",
-  "NOVELTY SCORE: HIGH (89.1%)",
+  "CONFIDENCE: HIGH (94.2%)",
+  "NOVELTY SCORE: EXCELLENT (91.5%)",
 ];
 
 const SynthesisLab = () => {
@@ -84,11 +82,26 @@ const SynthesisLab = () => {
   }, []);
 
   useEffect(() => {
-    setPdfActive(localStorage.getItem("pdf_active") === "true");
-    try {
-      setPdfKeywords(JSON.parse(localStorage.getItem("pdf_keywords") || "[]"));
-    } catch (e) {}
+    const checkStorage = () => {
+      setPdfActive(localStorage.getItem("pdf_active") === "true");
+      try {
+        const storedKeywords = JSON.parse(localStorage.getItem("pdf_keywords") || "[]");
+        if (storedKeywords.length > 0) {
+          setPdfKeywords(storedKeywords);
+        } else {
+          setPdfKeywords(["Turbofan", "RUL", "LSTM", "Aviation Safety", "Explainable AI"]);
+        }
+      } catch (e) {
+        setPdfKeywords(["Turbofan", "RUL", "LSTM", "Aviation Safety", "Explainable AI"]);
+      }
+    };
+
+    checkStorage();
+    const interval = setInterval(checkStorage, 500);
+
     fetchNodes();
+
+    return () => clearInterval(interval);
   }, [fetchNodes]);
 
   const handleStartDiscovery = useCallback(() => {
@@ -99,7 +112,7 @@ const SynthesisLab = () => {
     ws.onopen = () => {
       ws.send(JSON.stringify({
         command: "start",
-        topic: "Quantum Coherence in Biological Systems",
+        topic: "Aircraft Engine RUL Prediction using XAI",
         gap_data: { red_anomalies: [] }
       }));
     };
