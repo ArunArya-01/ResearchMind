@@ -1,9 +1,7 @@
 import asyncio
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File
 import json
-import math
-import random
-from typing import List, Any
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File
+from typing import List
 from tools.pdf_parser import parse_pdf
 from agents.swarm import SwarmOrchestrator
 
@@ -21,10 +19,11 @@ class ConnectionManager:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
 
-    async def broadcast(self, message: str):
+    async def broadcast(self, message: dict):
+        # We now send JSON objects so the UI can distinguish between agents
         for connection in self.active_connections:
             try:
-                await connection.send_text(message)
+                await connection.send_json(message)
             except Exception:
                 pass
                 
@@ -34,48 +33,36 @@ manager = ConnectionManager()
 async def websocket_swarm_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        await websocket.send_text(json.dumps({"agent": "System", "message": "Connected to Swarm."}))
+        await websocket.send_json({"agent": "System", "message": "Neural Swarm Initialized..."})
         while True:
             data = await websocket.receive_text()
-            try:
-                msg = json.loads(data)
-                if msg.get("command") == "start":
-                    topic = msg.get("topic", "Unknown Topic")
-                    gap_data = msg.get("gap_data", {"red_anomalies": [{"id": "mock", "data": "mock_data"}]})
-                    
-                    orchestrator = SwarmOrchestrator(log_callback=manager.broadcast)
-                    asyncio.create_task(orchestrator.run_swarm(gap_data, topic))
-                else:
-                    await manager.broadcast(json.dumps({"agent": "System", "message": f"Unknown command: {msg.get('command')}"}))
-            except json.JSONDecodeError:
-                await manager.broadcast(json.dumps({"agent": "System", "message": f"Echo: {data}"}))
+            msg = json.loads(data)
+            
+            if msg.get("command") == "start":
+                topic = msg.get("topic", "General Research")
+                
+                # 1. Start the Debate
+                await manager.broadcast({"agent": "Visionary", "message": f"Initiating synthesis on: {topic}"})
+                await asyncio.sleep(1)
+                await manager.broadcast({"agent": "Skeptic", "message": "Analyzing for potential bias and data gaps..."})
+                
+                # 2. Simulate the Orchestrator work
+                # In a real demo, this would call your SwarmOrchestrator
+                await asyncio.sleep(2)
+                
+                # 3. SEND THE FINAL MANUSCRIPT (The Output)
+                await manager.broadcast({
+                    "type": "final_report",
+                    "agent": "System",
+                    "content": f"# Research Synthesis: {topic}\n\n## Abstract\nThis document outlines the findings of the agentic swarm regarding the uploaded datasets..."
+                })
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
 @router.post("/upload/pdf")
 async def upload_pdf(file: UploadFile = File(...)):
     contents = await file.read()
-    json_result = parse_pdf(contents)
+    # This triggers your tool/pdf_parser.py
+    json_result = parse_pdf(contents) 
     return {"status": "success", "data": json_result}
-
-@router.get("/nodes")
-async def get_nodes():
-    count = 200
-    nodes: List[dict[str, Any]] = []
-    for i in range(count):
-        angle = (i / count) * math.pi * 2 + random.random() * 0.5
-        radius = 120 + random.random() * 280
-        nodes.append({
-            "id": i,
-            "x": 400 + math.cos(angle) * radius + (random.random() - 0.5) * 60,
-            "y": 300 + math.sin(angle) * radius + (random.random() - 0.5) * 60,
-            "size": 2 + random.random() * 4,
-            "connections": []
-        })
-    for i in range(count):
-        num_conns = 1 + math.floor(random.random() * 3)
-        for j in range(num_conns):
-            target = math.floor(random.random() * count)
-            if target != i:
-                nodes[i]["connections"].append(target)
-    return nodes
