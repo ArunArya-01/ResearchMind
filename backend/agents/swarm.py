@@ -17,7 +17,7 @@ class SwarmOrchestrator:
         except Exception:
             pass
 
-        priorities = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-pro']
+        priorities = ['models/gemini-3-flash', 'models/gemini-2.5-flash', 'models/gemini-1.5-flash']
         selected = None
         for p in priorities:
             if p in available_models or p.replace('models/', '') in available_models:
@@ -42,6 +42,21 @@ class SwarmOrchestrator:
         import json
         payload = {"agent": agent_name, "message": message}
         await self.log_callback(json.dumps(payload))
+
+    async def log_status(self, message: str):
+        import json
+        payload = {"type": "status", "content": message}
+        await self.log_callback(json.dumps(payload))
+
+    async def _safe_generate(self, prompt: str):
+        try:
+            return await asyncio.to_thread(self.model.generate_content, prompt)
+        except Exception as e:
+            if '429' in str(e) or 'ResourceExhausted' in getattr(type(e), '__name__', ''):
+                await self.log_status("Agent is cooling down (Rate Limit)... Retrying in 10s.")
+                await asyncio.sleep(10)
+                return await asyncio.to_thread(self.model.generate_content, prompt)
+            raise e
 
     async def run_swarm(self, discovery_gap_data: dict, topic: str):
         print("DEBUG: Alpha Agent starting...")
@@ -70,7 +85,7 @@ class SwarmOrchestrator:
             """
             
             # Run blocking API call in executor (or just await if using async client, but generic genai SDK is sync by default)
-            alpha_response = await asyncio.to_thread(self.model.generate_content, alpha_prompt)
+            alpha_response = await self._safe_generate(alpha_prompt)
             hypothesis = alpha_response.text.strip()
             
             await self.log("Visionary", f"Proposed Hypothesis:\n{hypothesis}\n")
@@ -86,7 +101,7 @@ class SwarmOrchestrator:
             Perform a stark 'Red-Team' critique. Identify exactly 3 specific flaws, weaknesses, or unsupported claims in the hypothesis.
             Be direct and analytical.
             """
-            beta_response = await asyncio.to_thread(self.model.generate_content, beta_prompt)
+            beta_response = await self._safe_generate(beta_prompt)
             critique = beta_response.text.strip()
             
             await self.log("Skeptic", f"Critique Findings (3 Flaws):\n{critique}\n")
@@ -101,7 +116,7 @@ class SwarmOrchestrator:
         
         Write a final 'synthesis_report.md' summarizing the findings, the final hypothesis, and acknowledging the remaining risks. Format it beautifully in Markdown.
         """
-        synthesis_response = await asyncio.to_thread(self.model.generate_content, synthesis_prompt)
+        synthesis_response = await self._safe_generate(synthesis_prompt)
         report = synthesis_response.text.strip()
         
         report_path = os.path.join(os.getcwd(), "synthesis_report.md")

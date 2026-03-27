@@ -351,8 +351,8 @@ const SynthesisLab = () => {
                 ) : (
                   skepticLogs.map((msg, i) => (
                     <div key={i}>
-                      <span className="text-crimson/60">{msg.time}</span>
-                      <p className={`text-bone mt-0.5 ${msg.msg.startsWith("WARNING") || msg.msg.startsWith("CHALLENGE") ? "text-crimson font-bold" : ""}`}>
+                      <span className="text-red-400/80">{msg.time}</span>
+                      <p className={`text-bone mt-0.5 ${msg.msg.startsWith("WARNING") || msg.msg.startsWith("CHALLENGE") ? "text-red-500 font-bold" : ""}`}>
                         {msg.msg}
                       </p>
                     </div>
