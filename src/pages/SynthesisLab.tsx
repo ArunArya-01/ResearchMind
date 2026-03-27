@@ -38,6 +38,7 @@ const SynthesisLab = () => {
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
   const [hasActiveScan, setHasActiveScan] = useState(false);
+  const [isDebating, setIsDebating] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
   const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
   
@@ -77,6 +78,7 @@ const SynthesisLab = () => {
          setLastUploadTime(currentUploadTime);
          setVisionaryLogs([{ time: "T+0.00s", msg: "System Ready" }]);
          setSkepticLogs([{ time: "T+0.00s", msg: "System Ready" }]);
+         setIsDebating(false);
          setFinalReportContent(null);
       }
 
@@ -110,6 +112,7 @@ const SynthesisLab = () => {
     setZoomedIn(true);
     setTimeout(() => setZoomedIn(false), 4000);
 
+    setIsDebating(true);
     setVisionaryLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
     setSkepticLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
     setFinalReportContent(null);
@@ -126,6 +129,7 @@ const SynthesisLab = () => {
         const data = JSON.parse(event.data);
         if (data.type === 'final_report') {
           setFinalReportContent(data.content || data.message);
+          setIsDebating(false);
           return;
         }
         const logEntry = {
@@ -156,7 +160,7 @@ const SynthesisLab = () => {
           <button
             onClick={handleStartDiscovery}
             disabled={!hasActiveScan}
-            className={`px-6 py-3 rounded-xl font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-shadow ${hasActiveScan ? "bg-crimson text-white hover:shadow-[0_0_30px_hsl(354_96%_43%_/_0.5)]" : "bg-obsidian border border-crimson/30 text-crimson/50 cursor-not-allowed"}`}
+            className={`px-6 py-3 rounded-xl font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-all duration-300 ${hasActiveScan ? "bg-crimson text-white shadow-[0_0_15px_hsl(354_96%_43%_/_0.4)] hover:shadow-[0_0_30px_hsl(354_96%_43%_/_0.8)] hover:-translate-y-0.5" : "bg-obsidian border border-crimson/30 text-crimson/50 cursor-not-allowed"}`}
           >
             <Play className="w-4 h-4" />
             Start Discovery
@@ -211,14 +215,12 @@ const SynthesisLab = () => {
                 </radialGradient>
               </defs>
               <circle cx={400} cy={300} r={80} fill="url(#redGlow)" />
-              {!hasActiveScan && (
-                <g>
-                  <circle cx={400} cy={300} r={20} fill="hsl(354 96% 43% / 0.8)" className="animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_15px_rgba(217,4,41,0.9)]" />
-                  <text x={400} y={345} textAnchor="middle" className="fill-crimson/50 font-mono text-xs tracking-widest animate-pulse font-bold">
-                    AWAITING DATA INPUT
-                  </text>
-                </g>
-              )}
+              <g>
+                <circle cx={400} cy={300} r={20} fill="hsl(354 96% 43% / 0.8)" className="animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_15px_rgba(217,4,41,0.9)]" />
+                <text x={400} y={345} textAnchor="middle" className="fill-crimson/50 font-mono text-xs tracking-widest animate-pulse font-bold transition-all duration-500">
+                  {isDebating ? "SWARM DEBATE IN PROGRESS" : "AWAITING DATA INPUT"}
+                </text>
+              </g>
 
               {/* Nodes - dynamic */}
               {nodes?.map((node, i) => {
