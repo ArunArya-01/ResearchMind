@@ -62,7 +62,7 @@ Together, they debate iteratively until a cohesive, battle-tested scientific pat
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/HackVerse.git
+git clone https://github.com/ArunArya-01/ResearchMind.git
 cd HackVerse
 ```
 
