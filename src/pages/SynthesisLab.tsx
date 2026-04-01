@@ -43,8 +43,18 @@ const SynthesisLab = () => {
   const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
   
   useEffect(() => {
-    setPdfKeywords([]);
-    setNodes([]);
+    try {
+      const activeStr = sessionStorage.getItem("active_keywords");
+      if (activeStr) {
+        const parsed = JSON.parse(activeStr);
+        if (parsed && parsed.length > 0) {
+          setPdfKeywords(parsed);
+          setHasActiveScan(true);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
 
   const visionaryEndRef = useRef<HTMLDivElement>(null);
@@ -83,15 +93,20 @@ const SynthesisLab = () => {
       }
 
       try {
-        const isComplete = localStorage.getItem("is_analysis_complete") === "true";
-        if (isComplete) {
-          const storedKeywords = JSON.parse(localStorage.getItem("pdf_keywords") || "[]");
-          setPdfKeywords(storedKeywords);
-        } else {
-          setPdfKeywords([]);
+        const activeStr = sessionStorage.getItem("active_keywords");
+        if (activeStr) {
+          const parsed = JSON.parse(activeStr);
+          if (parsed && parsed.length > 0) {
+            setPdfKeywords(parsed);
+            setHasActiveScan(true);
+          } else {
+            setPdfKeywords([]);
+            setHasActiveScan(false);
+          }
         }
       } catch (e) {
         setPdfKeywords([]);
+        setHasActiveScan(false);
       }
     };
 
@@ -193,7 +208,7 @@ const SynthesisLab = () => {
                     <motion.line
                       key={`${node.id}-${ci}`}
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
+                      animate={{ opacity: pdfKeywords.length > 0 ? 1 : 0 }}
                       transition={{ duration: 1, delay: 1.5 }}
                       x1={node?.x ?? 0}
                       y1={node?.y ?? 0}
@@ -218,7 +233,7 @@ const SynthesisLab = () => {
               <g>
                 <circle cx={400} cy={300} r={20} fill="hsl(354 96% 43% / 0.8)" className="animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_15px_rgba(217,4,41,0.9)]" />
                 <text x={400} y={345} textAnchor="middle" className="fill-crimson/50 font-mono text-xs tracking-widest animate-pulse font-bold transition-all duration-500">
-                  {isDebating ? "SWARM DEBATE IN PROGRESS" : "AWAITING DATA INPUT"}
+                  {isDebating ? "SWARM DEBATE IN PROGRESS" : (hasActiveScan ? "" : "AWAITING DATA INPUT")}
                 </text>
               </g>
 
@@ -247,7 +262,7 @@ const SynthesisLab = () => {
                         times: [0, 0.6, 1],
                         delay: Math.random() * 0.2
                       }}
-                      fill={hasActiveScan ? "hsl(354 96% 43% / 0.9)" : "hsl(0 0% 100% / 0.8)"}
+                      fill="hsl(0 0% 100% / 0.8)"
                       className={`cursor-pointer overflow-visible hover:fill-bone/50 ${
                         isKeywordNode 
                           ? "drop-shadow-[0_0_12px_rgba(217,4,41,1)]" 

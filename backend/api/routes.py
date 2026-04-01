@@ -87,5 +87,6 @@ async def upload_pdf(file: UploadFile = File(...)):
     # This triggers your tool/pdf_parser.py
     json_result = parse_pdf(contents)
     PROCESSED_DATA["text"] = json_result.get("text", "")
+    PROCESSED_DATA["keywords"] = json_result.get("keywords", [])
     
     return {"status": "success", "data": json_result}
