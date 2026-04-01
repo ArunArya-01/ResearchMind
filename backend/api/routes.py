@@ -12,6 +12,7 @@ router = APIRouter()
 async def get_nodes():
     try:
         nodes = []
+        links = []
         import math, random
         count = 100
         for i in range(count):
@@ -30,9 +31,10 @@ async def get_nodes():
                 target = math.floor(random.random() * count)
                 if target != i:
                     nodes[i]["connections"].append(target)
-        return nodes
+                    links.append({"source": i, "target": target})
+        return {"nodes": nodes, "links": links}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"nodes": [], "error": str(e)})
+        return JSONResponse(status_code=200, content={"nodes": [], "links": [], "error": str(e)})
 
 import chromadb
 chroma_client = chromadb.PersistentClient(path="./chroma_db")

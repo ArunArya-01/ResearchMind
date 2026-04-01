@@ -84,7 +84,7 @@ const SynthesisLab = () => {
   const fetchNodes = useCallback(async () => {
     try {
       setNodes(null);
-      const res = await fetch(`${API_BASE_URL}/nodes`);
+      const res = await fetch(`http://localhost:8001/nodes`);
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
       if (Array.isArray(data)) {
@@ -94,7 +94,7 @@ const SynthesisLab = () => {
       }
     } catch (e) {
       console.error("Backend nodes error:", e);
-      setNodes(generateNodes(200));
+      setNodes([]);
     }
   }, []);
 
