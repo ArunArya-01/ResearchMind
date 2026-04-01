@@ -86,32 +86,46 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         await websocket.send_json({"agent": "System", "message": "Neural Swarm Initialized..."})
+        
+        active_orchestrator = None
+        
+        async def run_swarm_task(topic, text_context):
+            nonlocal active_orchestrator
+            async def log_adapter(msg_str: str):
+                await manager.broadcast(json.loads(msg_str))
+                
+            active_orchestrator = SwarmOrchestrator(log_callback=log_adapter)
+            try:
+                report = await active_orchestrator.run_swarm(discovery_gap_data={"context": text_context}, topic=topic)
+                await manager.broadcast({
+                    "type": "final_report",
+                    "agent": "System",
+                    "content": report
+                })
+            except Exception as e:
+                await manager.broadcast({"agent": "System", "message": f"Swarm Generator Error: {str(e)}"})
+            finally:
+                active_orchestrator = None
+
         while True:
             data = await websocket.receive_text()
             msg = json.loads(data)
             
             if msg.get("type") == "start":
                 topic = msg.get("topic", "Aircraft Engine RUL")
-                
-                # Run real orchestrator
                 text_context = PROCESSED_DATA.get("text", "")
                 
                 if not text_context:
                     await websocket.send_json({"agent": "System", "message": "Please upload a file first."})
                     continue
                 
-                async def log_adapter(msg_str: str):
-                    await manager.broadcast(json.loads(msg_str))
-                    
-                orchestrator = SwarmOrchestrator(log_callback=log_adapter)
-                report = await orchestrator.run_swarm(discovery_gap_data={"context": text_context}, topic=topic)
+                # Mount the swarm engine fully asynchronously in the background
+                asyncio.create_task(run_swarm_task(topic, text_context))
                 
-                # 3. SEND THE FINAL MANUSCRIPT (The Output)
-                await manager.broadcast({
-                    "type": "final_report",
-                    "agent": "System",
-                    "content": report
-                })
+            elif msg.get("type") == "director_override":
+                cmd = msg.get("command", "")
+                if active_orchestrator and cmd:
+                    active_orchestrator.inject_override(cmd)
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)

@@ -37,6 +37,10 @@ class SwarmOrchestrator:
         self.log_callback = log_callback
         model_name = self._select_best_model()
         self.model = genai.GenerativeModel(model_name)
+        self.active_overrides = []
+
+    def inject_override(self, command: str):
+        self.active_overrides.append(command)
 
     async def log(self, agent_name: str, message: str):
         import json
@@ -73,11 +77,17 @@ class SwarmOrchestrator:
             # Agent Alpha (Visionary)
             await self.log("Visionary", "Analyzing Discovery Gap and generating hypothesis...")
             
+            override_text_alpha = ""
+            if self.active_overrides:
+                override_text_alpha = f"\n\n<[ CRITICAL DIRECTOR COMMAND DIRECTIVE: IMPERATIVE OVERRIDE ]>\n" + "\n".join(self.active_overrides) + "\n</[ CRITICAL DIRECTOR COMMAND DIRECTIVE ]>\n"
+                self.active_overrides = []
+            
             alpha_prompt = f"""
             You are Agent Alpha, the Visionary.
             Topic: {topic}
             Discovery Gap Data: {context}
             Previous Critique: {critique}
+            {override_text_alpha}
             
             Formulate a bold, innovative hypothesis based on the 'Red Anomaly' discovery gaps.
             If there was a previous critique, address those flaws in your new hypothesis.
@@ -114,6 +124,11 @@ class SwarmOrchestrator:
             # Agent Beta (Skeptic)
             await self.log("Skeptic", f"Evaluating hypothesis and performing Red-Team cross-reference critique...")
             
+            override_text_beta = ""
+            if self.active_overrides:
+                override_text_beta = f"\n\n<[ CRITICAL DIRECTOR COMMAND DIRECTIVE: IMPERATIVE OVERRIDE ]>\n" + "\n".join(self.active_overrides) + "\n</[ CRITICAL DIRECTOR COMMAND DIRECTIVE ]>\n"
+                self.active_overrides = []
+            
             beta_prompt = f"""
             You are Agent Beta, the Skeptic.
             Hypothesis:
@@ -121,6 +136,7 @@ class SwarmOrchestrator:
             
             Retrieved Cross-Reference Data from Vector Database:
             {vector_context}
+            {override_text_beta}
             
             Perform a stark 'Red-Team' critique. PRIORITIZE FINDING SAFETY GAPS.
             Identify exactly 3 specific safety flaws, weaknesses, or unsupported claims.
@@ -134,11 +150,18 @@ class SwarmOrchestrator:
 
         # Final Synthesis
         await self.log("System", "Generating Final Synthesis Report...")
+        
+        override_text_final = ""
+        if self.active_overrides:
+            override_text_final = f"\n\n<[ CRITICAL DIRECTOR COMMAND DIRECTIVE: IMPERATIVE OVERRIDE ]>\n" + "\n".join(self.active_overrides) + "\n</[ CRITICAL DIRECTOR COMMAND DIRECTIVE ]>\n"
+            self.active_overrides = []
+            
         synthesis_prompt = f"""
         You are the Master Synthesizer.
         Topic: {topic}
         Final Hypothesis: {hypothesis}
         Final Critique: {critique}
+        {override_text_final}
         
         Write a final 'synthesis_report.md' summarizing the findings, the final hypothesis, and acknowledging the remaining risks. Format it beautifully in Markdown.
 

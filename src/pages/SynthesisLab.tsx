@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import FloatingPanel from "../components/FloatingPanel";
-import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw } from "lucide-react";
+import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw, Terminal } from "lucide-react";
 import { motion } from "framer-motion";
 
 const API_BASE_URL =
@@ -36,6 +36,8 @@ const SynthesisLab = () => {
   const [nodes, setNodes] = useState<{ id: number; x: number; y: number; size: number; connections: number[] }[] | null>([]);
   const [visionaryLogs, setVisionaryLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
+  const [directorLogs, setDirectorLogs] = useState<{ time: string; msg: string }[]>([]);
+  const [directorInput, setDirectorInput] = useState("");
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
   const [hasActiveScan, setHasActiveScan] = useState(false);
   const [isDebating, setIsDebating] = useState(false);
@@ -72,6 +74,8 @@ const SynthesisLab = () => {
 
   const visionaryEndRef = useRef<HTMLDivElement>(null);
   const skepticEndRef = useRef<HTMLDivElement>(null);
+  const directorEndRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     visionaryEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -80,6 +84,18 @@ const SynthesisLab = () => {
   useEffect(() => {
     skepticEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [skepticLogs]);
+
+  useEffect(() => {
+    directorEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [directorLogs]);
+
+  const handleDirectorSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && directorInput.trim() && socketRef.current) {
+        socketRef.current.send(JSON.stringify({ type: 'director_override', command: directorInput }));
+        setDirectorLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: `OVERRIDE: ${directorInput}` }]);
+        setDirectorInput("");
+    }
+  };
 
   const fetchNodes = useCallback(async () => {
     try {
@@ -159,6 +175,7 @@ const SynthesisLab = () => {
     setConflictingKeywords([]);
 
     const ws = new WebSocket("ws://localhost:8001/ws/swarm");
+    socketRef.current = ws;
     ws.onopen = () => {
       ws.send(JSON.stringify({
         type: "start",
@@ -229,22 +246,6 @@ const SynthesisLab = () => {
             </button>
           </div>
           <div className="relative min-h-[400px] bg-obsidian overflow-hidden" onPointerMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
-            {hoveredNode && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                style={{ position: 'fixed', top: mousePos.y + 15, left: mousePos.x + 15, zIndex: 9999, pointerEvents: 'none' }}
-                className="w-72 bg-pure-black/95 backdrop-blur-xl border border-bone/30 p-3 shadow-[0_4px_30px_rgba(0,0,0,1)]"
-              >
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-bone/10">
-                  <div className="w-1.5 h-1.5 rounded-full bg-bone animate-pulse" />
-                  <span className="text-bone font-mono text-[10px] uppercase tracking-wider">Multimodal Extraction: {hoveredNode.keyword}</span>
-                </div>
-                <div className="border border-bone/20 bg-pure-black overflow-hidden relative flex items-center justify-center p-2 mt-2 rounded-md" style={{aspectRatio: '4/3'}}>
-                   <img src={`http://localhost:8001${hoveredNode.imgPath}`} alt={hoveredNode.keyword} style={{maxWidth: '250px'}} className="w-full h-full object-contain filter contrast-125" />
-                </div>
-              </motion.div>
-            )}
 
             {!nodes ? (
               <div className="flex flex-col items-center justify-center h-[400px] text-bone/50">
@@ -350,6 +351,7 @@ const SynthesisLab = () => {
                         delay: Math.random() * 0.2
                       }}
                       fill={nodeFill}
+                      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
                       className={`cursor-pointer overflow-visible hover:fill-bone/50 ${nodeClass}`}
                       onMouseEnter={(e: any) => {
                         const target = e.target as SVGCircleElement;
@@ -493,6 +495,40 @@ const SynthesisLab = () => {
           </FloatingPanel>
         </div>
 
+        {/* DIRECTOR TERMINAL */}
+        <FloatingPanel z={40} className="w-full mb-8 !bg-transparent !border-0 !shadow-none">
+          <div className="p-5 bg-obsidian border border-bone/20 rounded-xl shadow-[0_8px_40px_-8px_hsl(0_0%_0%_/_0.8)] backdrop-blur transition-colors focus-within:border-green-400">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-bone/20">
+              <Terminal className="w-4 h-4 text-green-400" />
+              <span className="text-bone font-mono font-bold text-sm">DIRECTOR TERMINAL</span>
+              <span className="text-bone/40 font-mono text-xs ml-auto">Human in the Loop</span>
+            </div>
+            <div className="space-y-3 font-mono text-xs max-h-[150px] overflow-y-auto mb-4">
+              {directorLogs.length === 0 ? (
+                <div className="text-bone/30 text-center py-4">Awaiting Override Directives</div>
+              ) : (
+                directorLogs.map((msg, i) => (
+                  <div key={i}>
+                    <span className="text-green-500/80">{msg.time}</span>
+                    <p className="text-green-400 mt-0.5 font-bold">
+                      {msg.msg}
+                    </p>
+                  </div>
+                ))
+              )}
+              <div ref={directorEndRef} />
+            </div>
+            <input 
+              type="text" 
+              value={directorInput}
+              onChange={(e) => setDirectorInput(e.target.value)}
+              onKeyDown={handleDirectorSubmit}
+              placeholder="> Inject real-time system directive... (Press Enter)"
+              className="w-full bg-pure-black border border-green-500/30 text-green-400 font-mono text-xs p-2.5 rounded focus:outline-none focus:border-green-400 transition-colors placeholder:text-green-900/50"
+            />
+          </div>
+        </FloatingPanel>
+
         {/* Final Manuscript */}
         {finalReportContent && (
           <FloatingPanel z={60} className="max-w-2xl mx-auto p-10 relative overflow-hidden border border-crimson min-h-[400px] overflow-y-auto max-h-[600px]">
@@ -506,6 +542,24 @@ const SynthesisLab = () => {
           </FloatingPanel>
         )}
       </div>
+
+      {/* Root Level Hover Tooltip */}
+      {hoveredNode && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          style={{ position: 'fixed', top: mousePos.y + 15, left: mousePos.x + 15, zIndex: 999999, pointerEvents: 'none' }}
+          className="w-72 bg-pure-black/95 backdrop-blur-xl border border-bone/30 p-3 shadow-[0_4px_30px_rgba(0,0,0,1)]"
+        >
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-bone/10">
+            <div className="w-1.5 h-1.5 rounded-full bg-bone animate-pulse" />
+            <span className="text-bone font-mono text-[10px] uppercase tracking-wider">Multimodal Extraction: {hoveredNode.keyword}</span>
+          </div>
+          <div className="border border-bone/20 bg-pure-black overflow-hidden relative flex items-center justify-center p-2 mt-2 rounded-md" style={{aspectRatio: '4/3'}}>
+             <img src={`http://localhost:8001${hoveredNode.imgPath}`} alt={hoveredNode.keyword} style={{maxWidth: '250px'}} className="w-full h-full object-contain filter contrast-125" />
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };
