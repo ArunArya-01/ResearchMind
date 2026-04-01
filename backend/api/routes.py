@@ -96,11 +96,12 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
                 
             active_orchestrator = SwarmOrchestrator(log_callback=log_adapter)
             try:
-                report = await active_orchestrator.run_swarm(discovery_gap_data={"context": text_context}, topic=topic)
+                report, gamma_score = await active_orchestrator.run_swarm(discovery_gap_data={"context": text_context}, topic=topic)
                 await manager.broadcast({
                     "type": "final_report",
                     "agent": "System",
-                    "content": report
+                    "content": report,
+                    "gamma_score": gamma_score
                 })
             except Exception as e:
                 await manager.broadcast({"agent": "System", "message": f"Swarm Generator Error: {str(e)}"})

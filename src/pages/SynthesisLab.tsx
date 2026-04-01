@@ -39,6 +39,7 @@ const SynthesisLab = () => {
   const [directorLogs, setDirectorLogs] = useState<{ time: string; msg: string }[]>([]);
   const [directorInput, setDirectorInput] = useState("");
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
+  const [gammaScore, setGammaScore] = useState<number | null>(null);
   const [hasActiveScan, setHasActiveScan] = useState(false);
   const [isDebating, setIsDebating] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
@@ -172,6 +173,7 @@ const SynthesisLab = () => {
     setVisionaryLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
     setSkepticLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
     setFinalReportContent(null);
+    setGammaScore(null);
     setConflictingKeywords([]);
 
     const ws = new WebSocket("ws://localhost:8001/ws/swarm");
@@ -186,7 +188,18 @@ const SynthesisLab = () => {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'final_report') {
+          const rawScore = data.gamma_score ?? 0;
           setFinalReportContent(data.content || data.message);
+          setGammaScore(rawScore);
+          
+          try {
+              const recent = JSON.parse(localStorage.getItem("recent_analysis") || "[]");
+              if (recent && recent.length > 0) {
+                  recent[0].gamma = rawScore;
+                  localStorage.setItem("recent_analysis", JSON.stringify(recent));
+              }
+          } catch(e) {}
+          
           setIsDebating(false);
           return;
         }
@@ -212,6 +225,12 @@ const SynthesisLab = () => {
       }
     };
   }, [hasActiveScan, pdfKeywords]);
+
+  const getGammaColor = (score: number) => {
+    if (score > 7.5) return "text-red-500 stroke-red-500";
+    if (score > 4.0) return "text-yellow-400 stroke-yellow-400";
+    return "text-cyan-400 stroke-cyan-400";
+  };
 
   return (
     <div className="min-h-screen bg-obsidian pt-24 px-6 pb-12">
@@ -532,10 +551,40 @@ const SynthesisLab = () => {
         {/* Final Manuscript */}
         {finalReportContent && (
           <FloatingPanel z={60} className="max-w-2xl mx-auto p-10 relative overflow-hidden border border-crimson min-h-[400px] overflow-y-auto max-h-[600px]">
-            <div className="flex items-center gap-2 mb-6 relative z-10">
-              <FileText className="w-5 h-5 text-pure-black/50" />
-              <span className="text-pure-black font-display font-semibold text-sm">Final Manuscript</span>
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 relative z-10 border-b border-crimson/20 pb-6">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-pure-black/50" />
+                <span className="text-pure-black font-display font-semibold text-xl">Final Manuscript</span>
+              </div>
+              
+              {gammaScore !== null && (
+                <div className="flex items-center gap-4 bg-obsidian p-3 rounded-xl border border-bone/20 shadow-lg shrink-0">
+                   <div className="relative w-16 h-16">
+                       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                           <circle cx="50" cy="50" r="40" className="stroke-bone/10" strokeWidth="8" fill="none" />
+                           <motion.circle 
+                               cx="50" cy="50" r="40" 
+                               className={getGammaColor(gammaScore)} 
+                               strokeWidth="8" fill="none" strokeLinecap="round"
+                               initial={{ strokeDasharray: "251 251", strokeDashoffset: 251 }}
+                               animate={{ strokeDashoffset: 251 - (251 * Math.min(gammaScore, 10)) / 10 }}
+                               transition={{ duration: 1.5, ease: "easeOut" }}
+                           />
+                       </svg>
+                       <div className="absolute inset-0 flex items-center justify-center flex-col">
+                           <span className={`text-sm font-bold font-mono ${getGammaColor(gammaScore).split(' ')[0]}`}>{gammaScore.toFixed(1)}</span>
+                       </div>
+                   </div>
+                   <div>
+                       <p className="text-bone/50 font-mono text-[10px] tracking-wider uppercase mb-1">Criticality Index</p>
+                       <p className={`font-display font-bold text-sm tracking-wide ${getGammaColor(gammaScore).split(' ')[0]}`}>
+                           {gammaScore > 7.5 ? "SEVERE RISK" : gammaScore > 4.0 ? "ELEVATED" : "NOMINAL"}
+                       </p>
+                   </div>
+                </div>
+              )}
             </div>
+            
             <div className="font-mono text-xs leading-relaxed text-pure-black/70 space-y-0.5 relative z-10">
               <div className="whitespace-pre-wrap">{finalReportContent}</div>
             </div>

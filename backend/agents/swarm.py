@@ -165,14 +165,44 @@ class SwarmOrchestrator:
         
         Write a final 'synthesis_report.md' summarizing the findings, the final hypothesis, and acknowledging the remaining risks. Format it beautifully in Markdown.
 
-        CRITICAL REQUIREMENT: You MUST include a specific section heading exactly titled "<b style="color:crimson;">CRITICAL RESEARCH GAPS</b>" (including the HTML tags) detailing the safety gaps found.
+        CRITICAL REQUIREMENT 1: You MUST include a specific section heading exactly titled "<b style="color:crimson;">CRITICAL RESEARCH GAPS</b>" (including the HTML tags) detailing the safety gaps found.
+        
+        CRITICAL REQUIREMENT 2: You MUST include an 'ACTIONABLE MAINTENANCE PROTOCOL' (a 3-step bulleted list) in your report outlining exactly how to mitigate the found risks.
+        
+        CRITICAL REQUIREMENT 3: At the absolute very end of your response, output a strict JSON block wrapped in ```json ... ``` containing EXACTLY three variables based on your findings:
+        - "G_severity": an integer/float from 1-10 assessing the safety gap severity.
+        - "V_certainty": a float from 0.1 to 1.0 reflecting your confidence level.
+        - "D_age": the estimated age of the primary methodology/context in years (integer).
         """
         synthesis_response = await self._safe_generate(synthesis_prompt)
-        report = synthesis_response.text.strip()
+        raw_report = synthesis_response.text.strip()
+        
+        # Isolate and parse the JSON block
+        import re, json, math
+        gamma_score = 0.0
+        json_match = re.search(r'```json\s*(\{.*?\})\s*```', raw_report, re.DOTALL)
+        
+        if json_match:
+            try:
+                metrics = json.loads(json_match.group(1))
+                g_sev = float(metrics.get("G_severity", 5.0))
+                v_cert = float(metrics.get("V_certainty", 0.5))
+                d_age = float(metrics.get("D_age", 5.0))
+                
+                # Formula: Gamma = (G_severity * V_certainty) * log10(D_age + 2)
+                gamma_score = (g_sev * v_cert) * math.log10(d_age + 2)
+                
+                # Strip the json block dynamically from the manuscript
+                report = raw_report.replace(json_match.group(0), "").strip()
+            except Exception as e:
+                print(f"DEBUG: Failed to parse Gamma JSON: {e}")
+                report = raw_report
+        else:
+            report = raw_report
         
         report_path = os.path.join(os.getcwd(), "synthesis_report.md")
         with open(report_path, "w") as f:
             f.write(report)
             
-        await self.log("System", f"Swarm complete. Report saved to synthesis_report.md")
-        return report
+        await self.log("System", f"Swarm complete. Gamma Score: {gamma_score:.2f}")
+        return report, gamma_score

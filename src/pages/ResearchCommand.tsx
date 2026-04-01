@@ -91,8 +91,10 @@ const ResearchCommand = () => {
                           {disc.elements} elements
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="text-crimson font-mono text-[10px] font-bold">Safety Risk: {((disc.elements * 7) % 60) + 20}%</span>
-                          <div className="w-2 h-2 rounded-full bg-crimson animate-pulse" />
+                          <span className={`font-mono text-[10px] font-bold uppercase ${disc.gamma && disc.gamma > 7.5 ? "text-red-500" : disc.gamma && disc.gamma > 4.0 ? "text-yellow-500" : disc.gamma !== undefined ? "text-cyan-500" : "text-pure-black/40"}`}>
+                             {disc.gamma !== undefined ? `Gamma Score: ${disc.gamma.toFixed(1)}` : "Awaiting Synthesis"}
+                          </span>
+                          <div className={`w-2 h-2 rounded-full animate-pulse ${disc.gamma && disc.gamma > 7.5 ? "bg-red-500" : disc.gamma && disc.gamma > 4.0 ? "bg-yellow-500" : disc.gamma !== undefined ? "bg-cyan-500" : "bg-pure-black/20"}`} />
                         </div>
                       </div>
                     </div>
