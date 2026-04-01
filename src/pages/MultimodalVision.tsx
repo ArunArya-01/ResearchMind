@@ -124,6 +124,9 @@ const MultimodalVision = () => {
           }
           
           localStorage.setItem("pdf_upload_time", Date.now().toString());
+          if (validFiles.length > 0) {
+             localStorage.setItem("pdf_title", validFiles[0].name);
+          }
 
           setExtractedText(documentText);
           setCurrentBoxes([]);

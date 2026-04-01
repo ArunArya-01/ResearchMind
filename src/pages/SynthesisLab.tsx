@@ -193,11 +193,10 @@ const SynthesisLab = () => {
           setGammaScore(rawScore);
           
           try {
-              const recent = JSON.parse(localStorage.getItem("recent_analysis") || "[]");
-              if (recent && recent.length > 0) {
-                  recent[0].gamma = rawScore;
-                  localStorage.setItem("recent_analysis", JSON.stringify(recent));
-              }
+              const currentFileName = localStorage.getItem("pdf_title") || "Untitled Research";
+              const saved = JSON.parse(localStorage.getItem('processedPapers') || '[]');
+              saved.push({ id: Date.now(), title: currentFileName, score: rawScore, date: new Date().toLocaleDateString(), status: 'Analyzed' });
+              localStorage.setItem('processedPapers', JSON.stringify(saved));
           } catch(e) {}
           
           setIsDebating(false);

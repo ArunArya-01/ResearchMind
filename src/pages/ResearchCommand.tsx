@@ -5,27 +5,26 @@ import RadialGauge from "../components/RadialGauge";
 import { BookOpen } from "lucide-react";
 
 const ResearchCommand = () => {
-  const [recentUploads, setRecentUploads] = useState<any[]>([]);
+  const [papers, setPapers] = useState<any[]>([]);
 
   useEffect(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem("recent_analysis") || "[]");
-      setRecentUploads(stored);
+      const stored = JSON.parse(localStorage.getItem("processedPapers") || "[]");
+      setPapers(stored.reverse());
     } catch (e) {
-      setRecentUploads([]);
+      setPapers([]);
     }
   }, []);
 
-  const papersProcessed = recentUploads.length;
-  const connectionsFound = recentUploads.reduce((sum, u) => sum + (u.keywords || 0), 0);
-  const totalElements = recentUploads.reduce((sum, u) => sum + (u.elements || 0), 0);
-  const discoveryScore = (papersProcessed * 10) + (totalElements * 0.5);
+  const papersProcessed = papers.length;
+  const averageScore = papersProcessed > 0 ? papers.reduce((sum, p) => sum + (p.score || 0), 0) / papersProcessed : 0;
+  const discoveryScore = (papersProcessed * 10) + (averageScore * 5);
 
   const statsConfig = [
     { label: "Active Threads", value: papersProcessed > 0 ? "1" : "0" },
     { label: "Papers Processed", value: papersProcessed.toString() },
-    { label: "Connections Found", value: connectionsFound.toString() },
-    { label: "Discovery Score", value: discoveryScore.toFixed(1) },
+    { label: "Average Risk (\u0393)", value: averageScore.toFixed(1) },
+    { label: "Discovery Index", value: discoveryScore.toFixed(1) },
   ];
 
   return (
@@ -33,9 +32,7 @@ const ResearchCommand = () => {
       <ParallaxContainer>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div
-            className="mb-12 text-center"
-          >
+          <div className="mb-12 text-center">
             <h1 className="text-bone font-display text-5xl font-bold tracking-tight mb-3">
               Research <span className="text-crimson">Command</span>
             </h1>
@@ -58,43 +55,60 @@ const ResearchCommand = () => {
 
           {/* Discovery Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {recentUploads.length === 0 ? (
+            {papers.length === 0 ? (
               <div className="glass-panel p-5 col-span-1 md:col-span-2 lg:col-span-4 text-center">
                 <h3 className="text-crimson font-display font-semibold text-lg flex justify-center items-center h-full">
                   Ready for Ingestion - No papers processed yet.
                 </h3>
               </div>
             ) : (
-              recentUploads.map((disc, idx) => {
+              papers.map((p, idx) => {
                 const Icon = BookOpen;
+                const score = p.score || 0;
+                let scoreColor = "text-cyan-500";
+                let badgeBg = "bg-cyan-500/20";
+                let dotBg = "bg-cyan-500";
+                
+                if (score > 7.5) {
+                  scoreColor = "text-red-500";
+                  badgeBg = "bg-red-500/20";
+                  dotBg = "bg-red-500";
+                } else if (score > 4.0) {
+                  scoreColor = "text-yellow-500";
+                  badgeBg = "bg-yellow-500/20";
+                  dotBg = "bg-yellow-500";
+                }
+
                 return (
                   <div
-                    key={idx}
-                    className="glass-panel p-5 cursor-pointer group relative overflow-hidden"
+                    key={p.id || idx}
+                    className="glass-panel p-5 cursor-pointer group relative overflow-hidden flex flex-col justify-between"
                     style={{ transformStyle: "preserve-3d", transform: "translateZ(50px)" }}
                   >
-                    <div className="flex items-start justify-between mb-4 relative z-10">
-                      <div className="p-2 rounded-xl bg-background">
-                        <Icon className="w-5 h-5 text-crimson" />
+                    <div>
+                      <div className="flex items-start justify-between mb-4 relative z-10">
+                        <div className={`p-2 rounded-xl ${badgeBg}`}>
+                          <Icon className={`w-5 h-5 ${scoreColor}`} />
+                        </div>
+                        <RadialGauge progress={(score / 10) * 100} size={56} />
                       </div>
-                      <RadialGauge progress={disc.progress} size={56} />
-                    </div>
 
-                    <h3 className="text-pure-black font-display font-semibold text-sm mb-1 leading-tight relative z-10 truncate" title={disc.title}>
-                      {disc.title}
-                    </h3>
-                    <p className="text-pure-black/40 font-mono text-xs mb-3 relative z-10">{disc.domain}</p>
+                      <h3 className="text-pure-black font-display font-semibold text-sm mb-1 leading-tight relative z-10 truncate" title={p.title}>
+                        {p.title}
+                      </h3>
+                      <p className="text-pure-black/40 font-mono text-xs mb-3 relative z-10">Analyzed: {p.date}</p>
+                    </div>
 
                     <div className="flex flex-col gap-2 relative z-10 mt-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-pure-black/30 font-mono text-xs">
-                          {disc.elements} elements
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${badgeBg} ${scoreColor}`}>
+                          {p.status}
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className={`font-mono text-[10px] font-bold uppercase ${disc.gamma && disc.gamma > 7.5 ? "text-red-500" : disc.gamma && disc.gamma > 4.0 ? "text-yellow-500" : disc.gamma !== undefined ? "text-cyan-500" : "text-pure-black/40"}`}>
-                             {disc.gamma !== undefined ? `Gamma Score: ${disc.gamma.toFixed(1)}` : "Awaiting Synthesis"}
+                          <span className={`font-mono text-[10px] font-bold uppercase ${scoreColor}`}>
+                             \u0393 Score: {score.toFixed(1)}
                           </span>
-                          <div className={`w-2 h-2 rounded-full animate-pulse ${disc.gamma && disc.gamma > 7.5 ? "bg-red-500" : disc.gamma && disc.gamma > 4.0 ? "bg-yellow-500" : disc.gamma !== undefined ? "bg-cyan-500" : "bg-pure-black/20"}`} />
+                          <div className={`w-2 h-2 rounded-full animate-pulse ${dotBg}`} />
                         </div>
                       </div>
                     </div>
