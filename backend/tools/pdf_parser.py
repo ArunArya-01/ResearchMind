@@ -29,12 +29,13 @@ def parse_pdf(file_bytes: bytes) -> Dict[str, Any]:
         clean_text += page_text + "\n"
         
         p_words = re.findall(r'\b[A-Za-z]{4,}\b', page_text)
-        p_exclude = {'this', 'that', 'with', 'from', 'have', 'were', 'which', 'their', 'there', 'they', 'also', 'been', 'than', 'into'}
+        p_exclude = {'this', 'that', 'with', 'from', 'have', 'were', 'which', 'their', 'there', 'they', 'also', 'been', 'than', 'into', 'based', 'used', 'using', 'these', 'those', 'would', 'could', 'should', 'only', 'such', 'some', 'many', 'more', 'most', 'other', 'another', 'very', 'much', 'about', 'over', 'under', 'between', 'through', 'after', 'before', 'during', 'while', 'since', 'until', 'because', 'although', 'even', 'though', 'however', 'therefore', 'thus', 'hence', 'then', 'else', 'instead'}
         p_word_freq = {}
         for w in p_words:
             wl = w.lower()
             if wl not in p_exclude:
-                p_word_freq[w] = p_word_freq.get(w, 0) + 1
+                score = 2 if w[0].isupper() else 1
+                p_word_freq[w] = p_word_freq.get(w, 0) + score
         
         p_sorted = sorted(p_word_freq.items(), key=lambda x: x[1], reverse=True)
         page_keyword = p_sorted[0][0] if p_sorted else "Data"
@@ -87,12 +88,13 @@ def parse_pdf(file_bytes: bytes) -> Dict[str, Any]:
 
     # Keyword extraction
     words = re.findall(r'\b[A-Za-z]{4,}\b', clean_text)
-    exclude = {'this', 'that', 'with', 'from', 'have', 'were', 'which', 'their', 'there', 'they', 'also', 'been', 'than', 'into'}
+    exclude = {'this', 'that', 'with', 'from', 'have', 'were', 'which', 'their', 'there', 'they', 'also', 'been', 'than', 'into', 'based', 'used', 'using', 'these', 'those', 'would', 'could', 'should', 'only', 'such', 'some', 'many', 'more', 'most', 'other', 'another', 'very', 'much', 'about', 'over', 'under', 'between', 'through', 'after', 'before', 'during', 'while', 'since', 'until', 'because', 'although', 'even', 'though', 'however', 'therefore', 'thus', 'hence', 'then', 'else', 'instead'}
     word_freq = {}
     for w in words:
         wl = w.lower()
         if wl not in exclude:
-            word_freq[w] = word_freq.get(w, 0) + 1
+            score = 3 if w[0].isupper() else 1
+            word_freq[w] = word_freq.get(w, 0) + score
             
     sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
     # Give priority to capitalized words as keywords when possible

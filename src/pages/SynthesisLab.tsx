@@ -44,7 +44,8 @@ const SynthesisLab = () => {
   const [pdfImages, setPdfImages] = useState<any[]>([]);
   const [conflictingKeywords, setConflictingKeywords] = useState<string[]>([]);
   const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<{x: number, y: number, keyword: string, imgPath: string} | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<{keyword: string, imgPath: string} | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
   useEffect(() => {
     try {
@@ -80,17 +81,21 @@ const SynthesisLab = () => {
     skepticEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [skepticLogs]);
 
-  const fetchNodes = useCallback(() => {
-    setNodes(null);
-    fetch(`${API_BASE_URL}/nodes`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed");
-        return res.json();
-      })
-      .then(data => setNodes(data))
-      .catch(() => {
-        setNodes(generateNodes(200));
-      });
+  const fetchNodes = useCallback(async () => {
+    try {
+      setNodes(null);
+      const res = await fetch(`${API_BASE_URL}/nodes`);
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setNodes(data);
+      } else {
+        setNodes(data.nodes || []);
+      }
+    } catch (e) {
+      console.error("Backend nodes error:", e);
+      setNodes(generateNodes(200));
+    }
   }, []);
 
   useEffect(() => {
@@ -223,20 +228,20 @@ const SynthesisLab = () => {
               <RefreshCw className="w-3 h-3" /> Sync
             </button>
           </div>
-          <div className="relative min-h-[400px] bg-obsidian">
+          <div className="relative min-h-[400px] bg-obsidian overflow-hidden" onPointerMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
             {hoveredNode && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                style={{ left: hoveredNode.x + 20, top: Math.max(0, hoveredNode.y - 150) }}
-                className="fixed z-[9999] w-72 bg-pure-black/95 backdrop-blur-xl border border-bone/30 p-3 shadow-[0_4px_30px_rgba(0,0,0,1)] pointer-events-none"
+                style={{ position: 'fixed', top: mousePos.y + 15, left: mousePos.x + 15, zIndex: 9999, pointerEvents: 'none' }}
+                className="w-72 bg-pure-black/95 backdrop-blur-xl border border-bone/30 p-3 shadow-[0_4px_30px_rgba(0,0,0,1)]"
               >
                 <div className="flex items-center gap-2 mb-2 pb-2 border-b border-bone/10">
                   <div className="w-1.5 h-1.5 rounded-full bg-bone animate-pulse" />
                   <span className="text-bone font-mono text-[10px] uppercase tracking-wider">Multimodal Extraction: {hoveredNode.keyword}</span>
                 </div>
                 <div className="border border-bone/20 bg-pure-black overflow-hidden relative flex items-center justify-center p-2 mt-2 rounded-md" style={{aspectRatio: '4/3'}}>
-                   <img src={`http://localhost:8001${hoveredNode.imgPath}`} alt={hoveredNode.keyword} className="w-full h-full object-contain filter contrast-125" />
+                   <img src={`http://localhost:8001${hoveredNode.imgPath}`} alt={hoveredNode.keyword} style={{maxWidth: '250px'}} className="w-full h-full object-contain filter contrast-125" />
                 </div>
               </motion.div>
             )}
@@ -354,8 +359,6 @@ const SynthesisLab = () => {
                            const matchedImg = pdfImages.find(img => img.keyword === keywordText);
                            if (matchedImg) {
                                setHoveredNode({
-                                  x: e.clientX,
-                                  y: e.clientY,
                                   keyword: keywordText,
                                   imgPath: matchedImg.citation_img
                                });

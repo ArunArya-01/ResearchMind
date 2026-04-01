@@ -1,11 +1,38 @@
 import asyncio
 import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi.responses import JSONResponse
 from typing import List
 from tools.pdf_parser import parse_pdf
 from agents.swarm import SwarmOrchestrator
 
 router = APIRouter()
+
+@router.get("/nodes")
+async def get_nodes():
+    try:
+        nodes = []
+        import math, random
+        count = 100
+        for i in range(count):
+            angle = (i / count) * math.pi * 2 + random.random() * 0.5
+            radius = 120 + random.random() * 280
+            nodes.append({
+                "id": i,
+                "x": 400 + math.cos(angle) * radius + (random.random() - 0.5) * 60,
+                "y": 300 + math.sin(angle) * radius + (random.random() - 0.5) * 60,
+                "size": 2 + random.random() * 4,
+                "connections": []
+            })
+        for i in range(count):
+            num_conns = 1 + math.floor(random.random() * 3)
+            for j in range(num_conns):
+                target = math.floor(random.random() * count)
+                if target != i:
+                    nodes[i]["connections"].append(target)
+        return nodes
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"nodes": [], "error": str(e)})
 
 import chromadb
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
