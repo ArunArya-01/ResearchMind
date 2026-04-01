@@ -90,17 +90,41 @@ class SwarmOrchestrator:
             
             await self.log("Visionary", f"Proposed Hypothesis:\n{hypothesis}\n")
             
+            # Vector Query Implementation
+            try:
+                import chromadb
+                chroma_client = chromadb.PersistentClient(path="./chroma_db")
+                collection = chroma_client.get_collection(name="research_papers")
+                
+                qr = collection.query(
+                    query_texts=[hypothesis],
+                    n_results=5
+                )
+                retrieved_chunks = qr.get("documents", [[]])[0]
+                retrieved_metadatas = qr.get("metadatas", [[]])[0]
+                
+                vector_context = ""
+                for doc_chunk, meta in zip(retrieved_chunks, retrieved_metadatas):
+                    vector_context += f"[Source Document: {meta.get('source_doc', 'Unknown')}]\n{doc_chunk}\n\n"
+                    
+            except Exception as e:
+                print(f"DEBUG: Vector query failed - {e}")
+                vector_context = "No cross-reference data found."
+
             # Agent Beta (Skeptic)
-            await self.log("Skeptic", "Evaluating hypothesis and performing Red-Team critique...")
+            await self.log("Skeptic", f"Evaluating hypothesis and performing Red-Team cross-reference critique...")
             
             beta_prompt = f"""
             You are Agent Beta, the Skeptic.
             Hypothesis:
             {hypothesis}
             
+            Retrieved Cross-Reference Data from Vector Database:
+            {vector_context}
+            
             Perform a stark 'Red-Team' critique. PRIORITIZE FINDING SAFETY GAPS.
-            Identify missing variables, outdated datasets, or logic flaws in the uploaded research.
             Identify exactly 3 specific safety flaws, weaknesses, or unsupported claims.
+            Explicitly query and cross-reference the vector database chunks provided. Compare claims from Document A against Document B to find contradictions.
             Be direct and analytical.
             """
             beta_response = await self._safe_generate(beta_prompt)

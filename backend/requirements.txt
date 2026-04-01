@@ -7,3 +7,4 @@ websockets
 python-multipart
 python-dotenv
 requests
+chromadb

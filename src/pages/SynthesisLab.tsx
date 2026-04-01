@@ -40,6 +40,8 @@ const SynthesisLab = () => {
   const [hasActiveScan, setHasActiveScan] = useState(false);
   const [isDebating, setIsDebating] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
+  const [pdfDocs, setPdfDocs] = useState<Record<string, string[]>>({});
+  const [conflictingKeywords, setConflictingKeywords] = useState<string[]>([]);
   const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
   
   useEffect(() => {
@@ -51,6 +53,10 @@ const SynthesisLab = () => {
           setPdfKeywords(parsed);
           setHasActiveScan(true);
         }
+      }
+      const activeDocsStr = sessionStorage.getItem("active_docs");
+      if (activeDocsStr) {
+        setPdfDocs(JSON.parse(activeDocsStr));
       }
     } catch (e) {
       console.error(e);
@@ -104,6 +110,10 @@ const SynthesisLab = () => {
             setHasActiveScan(false);
           }
         }
+        const activeDocsStr = sessionStorage.getItem("active_docs");
+        if (activeDocsStr) {
+          setPdfDocs(JSON.parse(activeDocsStr));
+        }
       } catch (e) {
         setPdfKeywords([]);
         setHasActiveScan(false);
@@ -131,6 +141,7 @@ const SynthesisLab = () => {
     setVisionaryLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
     setSkepticLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
     setFinalReportContent(null);
+    setConflictingKeywords([]);
 
     const ws = new WebSocket("ws://localhost:8000/ws/swarm");
     ws.onopen = () => {
@@ -154,6 +165,14 @@ const SynthesisLab = () => {
         if (data.agent === "Visionary") {
           setVisionaryLogs(prev => [...prev, logEntry]);
         } else if (data.agent === "Skeptic") {
+          const msgUpper = (data.message || data.content || "").toUpperCase();
+          if (msgUpper.includes("CONTRADICT") || msgUpper.includes("CONFLICT") || msgUpper.includes("WEAKNESS") || msgUpper.includes("SAFETY")) {
+             pdfKeywords.forEach(kw => {
+                if (msgUpper.includes(kw.toUpperCase())) {
+                   setConflictingKeywords(prev => Array.from(new Set([...prev, kw])));
+                }
+             });
+          }
           setSkepticLogs(prev => [...prev, logEntry]);
         }
       } catch (e) {
@@ -203,8 +222,13 @@ const SynthesisLab = () => {
             ) : (
               <svg width="100%" viewBox="0 0 800 600" className="h-[400px]">
                 {/* Connections - ultra-thin white */}
-                {nodes?.map((node) =>
-                  node?.connections?.map((target, ci) => (
+                {nodes?.map((node, i) =>
+                  node?.connections?.map((target, ci) => {
+                    const isNodeConflicting = hasActiveScan && i < 10 && i < pdfKeywords.length && conflictingKeywords.includes(pdfKeywords[i]);
+                    const isTargetConflicting = hasActiveScan && target < 10 && target < pdfKeywords.length && conflictingKeywords.includes(pdfKeywords[target]);
+                    const isConflictLine = isNodeConflicting || isTargetConflicting;
+                    
+                    return (
                     <motion.line
                       key={`${node.id}-${ci}`}
                       initial={{ opacity: 0 }}
@@ -214,11 +238,12 @@ const SynthesisLab = () => {
                       y1={node?.y ?? 0}
                       x2={nodes[target]?.x ?? 0}
                       y2={nodes[target]?.y ?? 0}
-                      stroke={hasActiveScan ? "hsl(354 96% 43% / 0.3)" : "hsl(0 0% 100% / 0.08)"}
-                      strokeWidth={hasActiveScan ? 1 : 0.5}
-                      className={hasActiveScan ? "animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_2px_rgba(217,4,41,0.5)]" : ""}
+                      stroke={isConflictLine ? "hsl(354 96% 43% / 0.9)" : (hasActiveScan ? "hsl(354 96% 43% / 0.2)" : "hsl(0 0% 100% / 0.08)")}
+                      strokeWidth={isConflictLine ? 3 : (hasActiveScan ? 1 : 0.5)}
+                      className={isConflictLine ? "animate-[pulse_1s_ease-in-out_infinite] drop-shadow-[0_0_5px_rgba(217,4,41,0.8)]" : (hasActiveScan ? "animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_2px_rgba(217,4,41,0.5)]" : "")}
                     />
-                  ))
+                    );
+                  })
                 )}
 
               {/* Red glow from Discovery Gap */}
@@ -243,6 +268,36 @@ const SynthesisLab = () => {
                 const keywordText = isKeywordNode ? pdfKeywords[i] : null;
                 const targetR = isKeywordNode ? (node.size * 2) : node.size;
                 
+                let nodeFill = "hsl(0 0% 100% / 0.8)";
+                let nodeClass = "";
+                
+                if (isKeywordNode && keywordText) {
+                    const docKeys = Object.keys(pdfDocs);
+                    const inDocs = docKeys.filter(d => pdfDocs[d].includes(keywordText));
+                    
+                    const isConflicting = inDocs.length > 1 && conflictingKeywords.includes(keywordText);
+                    
+                    if (isConflicting) {
+                        nodeFill = "hsl(300 100% 50% / 0.9)"; // Magenta
+                        nodeClass = "animate-[pulse_1s_ease-in-out_infinite] drop-shadow-[0_0_15px_rgba(255,0,255,1)]";
+                    } else if (inDocs.length > 0) {
+                        const primaryDocIndex = docKeys.indexOf(inDocs[0]);
+                        if (primaryDocIndex === 0) {
+                            nodeFill = "hsl(180 100% 50% / 0.8)"; // Cyan
+                            nodeClass = "drop-shadow-[0_0_12px_rgba(0,255,255,0.8)]";
+                        } else {
+                            nodeFill = "hsl(30 100% 50% / 0.8)"; // Orange
+                            nodeClass = "drop-shadow-[0_0_12px_rgba(255,165,0,0.8)]";
+                        }
+                    } else {
+                        nodeClass = "drop-shadow-[0_0_12px_rgba(217,4,41,1)]";
+                    }
+                } else if (hasActiveScan) {
+                    nodeClass = "animate-[pulse_3s_ease-in-out_infinite] drop-shadow-[0_0_8px_rgba(217,4,41,0.8)]";
+                } else {
+                    nodeClass = "drop-shadow-[0_0_5px_rgba(253,253,253,0.8)]";
+                }
+                
                 return (
                   <g key={node.id}>
                     <motion.circle
@@ -262,14 +317,8 @@ const SynthesisLab = () => {
                         times: [0, 0.6, 1],
                         delay: Math.random() * 0.2
                       }}
-                      fill="hsl(0 0% 100% / 0.8)"
-                      className={`cursor-pointer overflow-visible hover:fill-bone/50 ${
-                        isKeywordNode 
-                          ? "drop-shadow-[0_0_12px_rgba(217,4,41,1)]" 
-                          : hasActiveScan 
-                            ? "animate-[pulse_3s_ease-in-out_infinite] drop-shadow-[0_0_8px_rgba(217,4,41,0.8)]" 
-                            : "drop-shadow-[0_0_5px_rgba(253,253,253,0.8)]"
-                      }`}
+                      fill={nodeFill}
+                      className={`cursor-pointer overflow-visible hover:fill-bone/50 ${nodeClass}`}
                       onMouseEnter={(e: any) => {
                         const target = e.target as SVGCircleElement;
                         target.setAttribute("r", (targetR * 1.5).toString());

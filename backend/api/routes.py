@@ -7,12 +7,27 @@ from agents.swarm import SwarmOrchestrator
 
 router = APIRouter()
 
-PROCESSED_DATA = {"text": "", "keywords": []}
+import chromadb
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+try:
+    collection = chroma_client.get_or_create_collection(name="research_papers")
+except Exception:
+    collection = chroma_client.create_collection(name="research_papers")
+
+PROCESSED_DATA = {"text": "", "keywords": [], "docs": {}}
 
 @router.post("/reset")
 async def reset_data():
     global PROCESSED_DATA
-    PROCESSED_DATA = {"text": "", "keywords": []}
+    PROCESSED_DATA = {"text": "", "keywords": [], "docs": {}}
+    
+    try:
+        chroma_client.delete_collection(name="research_papers")
+        global collection
+        collection = chroma_client.create_collection(name="research_papers")
+    except Exception:
+        pass
+        
     return {"status": "cleared"}
 
 class ConnectionManager:
@@ -73,20 +88,71 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 @router.post("/upload/pdf")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(files: List[UploadFile] = File(...)):
     global PROCESSED_DATA
-    PROCESSED_DATA = {"text": "", "keywords": []}
+    PROCESSED_DATA = {"text": "", "keywords": [], "docs": {}}
     
-    contents = await file.read()
-    
+    # reset collection on new batch upload
+    try:
+        chroma_client.delete_collection(name="research_papers")
+        global collection
+        collection = chroma_client.create_collection(name="research_papers")
+    except Exception:
+        pass
+        
     import os
     os.makedirs('data', exist_ok=True)
-    with open(f'data/{file.filename}', 'wb') as f:
-        f.write(contents)
-        
-    # This triggers your tool/pdf_parser.py
-    json_result = parse_pdf(contents)
-    PROCESSED_DATA["text"] = json_result.get("text", "")
-    PROCESSED_DATA["keywords"] = json_result.get("keywords", [])
     
-    return {"status": "success", "data": json_result}
+    all_text = ""
+    all_keywords = set()
+    all_docs = {}
+    total_pages = 0
+    total_refs = 0
+    
+    for file in files:
+        contents = await file.read()
+        filename = file.filename
+        
+        with open(f'data/{filename}', 'wb') as f:
+            f.write(contents)
+            
+        json_result = parse_pdf(contents)
+        doc_text = json_result.get("text", "")
+        doc_keywords = json_result.get("keywords", [])
+        
+        all_text += f"\n\n=== {filename} ===\n\n{doc_text}"
+        all_keywords.update(doc_keywords)
+        all_docs[filename] = doc_keywords
+        
+        elements = json_result.get("elements", {})
+        total_pages += elements.get("pages", 0)
+        total_refs += elements.get("references", 0)
+        
+        chunks = [doc_text[i:i+1000] for i in range(0, len(doc_text), 1000) if len(doc_text[i:i+1000].strip()) > 50]
+        ids = [f"{filename}_chunk_{i}" for i in range(len(chunks))]
+        metadatas = [{"source_doc": filename} for _ in chunks]
+        
+        if chunks:
+            collection.add(
+                documents=chunks,
+                metadatas=metadatas,
+                ids=ids
+            )
+            
+    aggregated_keywords = list(all_keywords)[:15]
+    PROCESSED_DATA["text"] = all_text
+    PROCESSED_DATA["keywords"] = aggregated_keywords
+    PROCESSED_DATA["docs"] = all_docs
+    
+    return {
+        "status": "success", 
+        "data": {
+            "text": all_text,
+            "keywords": aggregated_keywords,
+            "docs": all_docs,
+            "elements": {
+                "pages": total_pages,
+                "references": total_refs
+            }
+        }
+    }

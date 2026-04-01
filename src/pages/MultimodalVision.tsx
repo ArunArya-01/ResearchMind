@@ -5,7 +5,7 @@ import { ScanLine, ZoomIn, FileText, BarChart3, Image as ImageIcon, UploadCloud 
 const MultimodalVision = () => {
   const [extractedText, setExtractedText] = useState<string>("");
   const [currentBoxes, setCurrentBoxes] = useState<any[]>([]);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -61,32 +61,34 @@ const MultimodalVision = () => {
     e.preventDefault();
     setIsDragActive(false);
     
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) await uploadFile(droppedFile);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) await uploadFiles(droppedFiles);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) await uploadFile(selectedFile);
+    if (e.target.files && e.target.files.length > 0) {
+      await uploadFiles(Array.from(e.target.files));
+    }
   };
 
-  const uploadFile = async (selectedFile: File) => {
-    if (selectedFile.type !== "application/pdf") {
-      alert("Please upload a PDF file.");
+  const uploadFiles = async (selectedFiles: File[]) => {
+    const validFiles = selectedFiles.filter(f => f.type === "application/pdf");
+    if (validFiles.length === 0) {
+      alert("Please upload PDF files.");
       return;
     }
 
-    setFile(selectedFile);
+    setFiles(validFiles);
     setIsUploading(true);
     setExtractedText(""); 
     setCurrentBoxes([]); 
-    setCurrentBoxes([]); 
     sessionStorage.setItem("hasActiveScan", "false");
     sessionStorage.setItem("active_keywords", JSON.stringify([]));
+    sessionStorage.setItem("active_docs", JSON.stringify({}));
     fetch("http://localhost:8000/reset", { method: "POST" }).catch(()=>console.log("Memory flush skipped"));
 
     const formData = new FormData();
-    formData.append("file", selectedFile);
+    validFiles.forEach(file => formData.append("files", file));
 
     try {
       const res = await fetch("http://localhost:8000/upload/pdf", {
@@ -101,16 +103,20 @@ const MultimodalVision = () => {
           const documentText = resData.data?.text || "";
           const elementsInfo = resData.data?.elements || { pages: 0, references: 0 };
           const backendKeywords = resData.data?.keywords || [];
+          const backendDocs = resData.data?.docs || {};
 
           const newLogs = [
-            { time: "00:01.2", msg: `File ${selectedFile.name} parsed` },
-            { time: "00:02.8", msg: "Text structure extracted via PyMuPDF" }
+            { time: "00:01.2", msg: `Files [${validFiles.map(f=>f.name).join(", ")}] parsed` },
+            { time: "00:02.8", msg: "Text structure extracted via PyMuPDF" },
+            { time: "00:03.5", msg: "Semantic Fusion: Vectorizing chunks in ChromaDB..." }
           ];
 
           if (backendKeywords.length > 0) {
              sessionStorage.setItem("active_keywords", JSON.stringify(backendKeywords));
+             sessionStorage.setItem("active_docs", JSON.stringify(backendDocs));
           } else {
              sessionStorage.setItem("active_keywords", JSON.stringify([]));
+             sessionStorage.setItem("active_docs", JSON.stringify({}));
           }
           
           localStorage.setItem("pdf_upload_time", Date.now().toString());
@@ -119,8 +125,7 @@ const MultimodalVision = () => {
           setCurrentBoxes([]);
 
           newLogs.push({ time: `00:05.1`, msg: `Found ${elementsInfo.pages} pages and ${elementsInfo.references} references` });
-          newLogs.push({ time: `00:10.0`, msg: "Multimodal extraction complete" });
-          setExtractionLogs(newLogs);
+          newLogs.push({ time: `00:10.0`, msg: "Multimodal extraction & Semantic Fusion complete" });
           setExtractionLogs(newLogs);
 
           setElementsFound([
@@ -136,12 +141,12 @@ const MultimodalVision = () => {
             const existingUploads = JSON.parse(localStorage.getItem("recent_uploads") || "[]");
             const totalElements = (elementsInfo.pages || 0) + (elementsInfo.references || 0);
             const newUpload = {
-              title: selectedFile.name,
+              title: validFiles.length > 1 ? `${validFiles.length} Documents Segmented` : validFiles[0].name,
               domain: backendKeywords.length > 0 ? backendKeywords[0] : "General Analysis",
               elements: totalElements,
               references: elementsInfo.references || 0,
               progress: Math.min(Math.round((totalElements / 50) * 100), 100),
-              papers: 1
+              papers: validFiles.length
             };
             localStorage.setItem("recent_uploads", JSON.stringify([...existingUploads, newUpload]));
           } catch(e) {
@@ -154,11 +159,11 @@ const MultimodalVision = () => {
         }
       } else {
         console.error("Upload failed");
-        setFile(null);
+        setFiles([]);
       }
     } catch (err) {
       console.error("Upload error", err);
-      setFile(null);
+      setFiles([]);
     } finally {
       setIsUploading(false);
     }
@@ -180,11 +185,12 @@ const MultimodalVision = () => {
           {/* PDF Viewer - Center */}
           <div className="lg:col-span-2">
             <FloatingPanel z={50} className="relative overflow-hidden border border-crimson">
-              {!isScanning && !file ? (
+              {!isScanning && files.length === 0 ? (
                 <>
                   <input
                     type="file"
                     accept=".pdf"
+                    multiple
                     ref={fileInputRef}
                     onChange={handleFileSelect}
                     className="hidden"
@@ -211,7 +217,7 @@ const MultimodalVision = () => {
                 <>
                   <div className="p-4 border-b border-crimson/20 flex items-center gap-3 relative z-10">
                     <FileText className="w-4 h-4 text-pure-black/50" />
-                    <span className="text-pure-black font-mono text-xs">{file?.name || "multi_modal_synthesis_2024.pdf"}</span>
+                    <span className="text-pure-black font-mono text-xs">{files.map(f => f.name).join(", ") || "multi_modal_synthesis_2024.pdf"}</span>
                     <div className="ml-auto flex items-center gap-2">
                       <ScanLine className={`w-4 h-4 text-crimson ${isScanning ? "animate-pulse" : ""}`} />
                       <span className="text-crimson font-mono text-xs">{isScanning ? "Scanning..." : "Processing..."}</span>
