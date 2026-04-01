@@ -7,6 +7,9 @@ if not os.getenv('GOOGLE_API_KEY'):
     print("ERROR: GOOGLE_API_KEY not detected in environment.")
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+os.makedirs("data/crops", exist_ok=True)
 
 from api.routes import router
 
@@ -16,9 +19,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORSMiddleware removed to allow Go Gateway to handle CORS headers
+from fastapi.middleware.cors import CORSMiddleware
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(router)
+
+app.mount("/crops", StaticFiles(directory="data/crops"), name="crops")
 
 @app.get("/")
 async def root():

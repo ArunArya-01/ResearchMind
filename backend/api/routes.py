@@ -14,12 +14,12 @@ try:
 except Exception:
     collection = chroma_client.create_collection(name="research_papers")
 
-PROCESSED_DATA = {"text": "", "keywords": [], "docs": {}}
+PROCESSED_DATA = {"text": "", "keywords": [], "docs": {}, "images": []}
 
 @router.post("/reset")
 async def reset_data():
     global PROCESSED_DATA
-    PROCESSED_DATA = {"text": "", "keywords": [], "docs": {}}
+    PROCESSED_DATA = {"text": "", "keywords": [], "docs": {}, "images": []}
     
     try:
         chroma_client.delete_collection(name="research_papers")
@@ -90,7 +90,7 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
 @router.post("/upload/pdf")
 async def upload_pdf(files: List[UploadFile] = File(...)):
     global PROCESSED_DATA
-    PROCESSED_DATA = {"text": "", "keywords": [], "docs": {}}
+    PROCESSED_DATA = {"text": "", "keywords": [], "docs": {}, "images": []}
     
     # reset collection on new batch upload
     try:
@@ -106,6 +106,7 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
     all_text = ""
     all_keywords = set()
     all_docs = {}
+    all_images = []
     total_pages = 0
     total_refs = 0
     
@@ -119,10 +120,12 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
         json_result = parse_pdf(contents)
         doc_text = json_result.get("text", "")
         doc_keywords = json_result.get("keywords", [])
+        doc_images = json_result.get("images", [])
         
         all_text += f"\n\n=== {filename} ===\n\n{doc_text}"
         all_keywords.update(doc_keywords)
         all_docs[filename] = doc_keywords
+        all_images.extend(doc_images)
         
         elements = json_result.get("elements", {})
         total_pages += elements.get("pages", 0)
@@ -143,6 +146,7 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
     PROCESSED_DATA["text"] = all_text
     PROCESSED_DATA["keywords"] = aggregated_keywords
     PROCESSED_DATA["docs"] = all_docs
+    PROCESSED_DATA["images"] = all_images
     
     return {
         "status": "success", 
@@ -150,6 +154,7 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
             "text": all_text,
             "keywords": aggregated_keywords,
             "docs": all_docs,
+            "images": all_images,
             "elements": {
                 "pages": total_pages,
                 "references": total_refs

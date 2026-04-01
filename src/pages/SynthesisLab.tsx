@@ -4,7 +4,7 @@ import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw } from "lucide-
 import { motion } from "framer-motion";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? `http://${window.location.hostname}:8000`;
+  import.meta.env.VITE_API_BASE_URL ?? `http://${window.location.hostname}:8001`;
 
 const generateNodes = (count: number) => {
   const nodes: { id: number; x: number; y: number; size: number; connections: number[] }[] = [];
@@ -41,8 +41,10 @@ const SynthesisLab = () => {
   const [isDebating, setIsDebating] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
   const [pdfDocs, setPdfDocs] = useState<Record<string, string[]>>({});
+  const [pdfImages, setPdfImages] = useState<any[]>([]);
   const [conflictingKeywords, setConflictingKeywords] = useState<string[]>([]);
   const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<{x: number, y: number, keyword: string, imgPath: string} | null>(null);
   
   useEffect(() => {
     try {
@@ -57,6 +59,10 @@ const SynthesisLab = () => {
       const activeDocsStr = sessionStorage.getItem("active_docs");
       if (activeDocsStr) {
         setPdfDocs(JSON.parse(activeDocsStr));
+      }
+      const activeImagesStr = sessionStorage.getItem("active_images");
+      if (activeImagesStr) {
+        setPdfImages(JSON.parse(activeImagesStr));
       }
     } catch (e) {
       console.error(e);
@@ -114,6 +120,10 @@ const SynthesisLab = () => {
         if (activeDocsStr) {
           setPdfDocs(JSON.parse(activeDocsStr));
         }
+        const activeImagesStr = sessionStorage.getItem("active_images");
+        if (activeImagesStr) {
+          setPdfImages(JSON.parse(activeImagesStr));
+        }
       } catch (e) {
         setPdfKeywords([]);
         setHasActiveScan(false);
@@ -143,7 +153,7 @@ const SynthesisLab = () => {
     setFinalReportContent(null);
     setConflictingKeywords([]);
 
-    const ws = new WebSocket("ws://localhost:8000/ws/swarm");
+    const ws = new WebSocket("ws://localhost:8001/ws/swarm");
     ws.onopen = () => {
       ws.send(JSON.stringify({
         type: "start",
@@ -214,6 +224,23 @@ const SynthesisLab = () => {
             </button>
           </div>
           <div className="relative min-h-[400px] bg-obsidian">
+            {hoveredNode && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                style={{ left: hoveredNode.x + 20, top: Math.max(0, hoveredNode.y - 150) }}
+                className="fixed z-[9999] w-72 bg-pure-black/95 backdrop-blur-xl border border-bone/30 p-3 shadow-[0_4px_30px_rgba(0,0,0,1)] pointer-events-none"
+              >
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-bone/10">
+                  <div className="w-1.5 h-1.5 rounded-full bg-bone animate-pulse" />
+                  <span className="text-bone font-mono text-[10px] uppercase tracking-wider">Multimodal Extraction: {hoveredNode.keyword}</span>
+                </div>
+                <div className="border border-bone/20 bg-pure-black overflow-hidden relative flex items-center justify-center p-2 mt-2 rounded-md" style={{aspectRatio: '4/3'}}>
+                   <img src={`http://localhost:8001${hoveredNode.imgPath}`} alt={hoveredNode.keyword} className="w-full h-full object-contain filter contrast-125" />
+                </div>
+              </motion.div>
+            )}
+
             {!nodes ? (
               <div className="flex flex-col items-center justify-center h-[400px] text-bone/50">
                 <Loader2 className="w-8 h-8 animate-spin mb-4 text-crimson" />
@@ -322,10 +349,23 @@ const SynthesisLab = () => {
                       onMouseEnter={(e: any) => {
                         const target = e.target as SVGCircleElement;
                         target.setAttribute("r", (targetR * 1.5).toString());
+                        
+                        if (isKeywordNode && keywordText) {
+                           const matchedImg = pdfImages.find(img => img.keyword === keywordText);
+                           if (matchedImg) {
+                               setHoveredNode({
+                                  x: e.clientX,
+                                  y: e.clientY,
+                                  keyword: keywordText,
+                                  imgPath: matchedImg.citation_img
+                               });
+                           }
+                        }
                       }}
                       onMouseLeave={(e: any) => {
                         const target = e.target as SVGCircleElement;
                         target.setAttribute("r", targetR.toString());
+                        setHoveredNode(null);
                       }}
                       onClick={() => {
                         if (keywordText) {

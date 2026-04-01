@@ -85,13 +85,14 @@ const MultimodalVision = () => {
     sessionStorage.setItem("hasActiveScan", "false");
     sessionStorage.setItem("active_keywords", JSON.stringify([]));
     sessionStorage.setItem("active_docs", JSON.stringify({}));
-    fetch("http://localhost:8000/reset", { method: "POST" }).catch(()=>console.log("Memory flush skipped"));
+    sessionStorage.setItem("active_images", JSON.stringify([]));
+    fetch("http://localhost:8001/reset", { method: "POST" }).catch(()=>console.log("Memory flush skipped"));
 
     const formData = new FormData();
     validFiles.forEach(file => formData.append("files", file));
 
     try {
-      const res = await fetch("http://localhost:8000/upload/pdf", {
+      const res = await fetch("http://localhost:8001/upload/pdf", {
         method: "POST",
         body: formData,
       });
@@ -104,6 +105,7 @@ const MultimodalVision = () => {
           const elementsInfo = resData.data?.elements || { pages: 0, references: 0 };
           const backendKeywords = resData.data?.keywords || [];
           const backendDocs = resData.data?.docs || {};
+          const backendImages = resData.data?.images || [];
 
           const newLogs = [
             { time: "00:01.2", msg: `Files [${validFiles.map(f=>f.name).join(", ")}] parsed` },
@@ -114,9 +116,11 @@ const MultimodalVision = () => {
           if (backendKeywords.length > 0) {
              sessionStorage.setItem("active_keywords", JSON.stringify(backendKeywords));
              sessionStorage.setItem("active_docs", JSON.stringify(backendDocs));
+             sessionStorage.setItem("active_images", JSON.stringify(backendImages));
           } else {
              sessionStorage.setItem("active_keywords", JSON.stringify([]));
              sessionStorage.setItem("active_docs", JSON.stringify({}));
+             sessionStorage.setItem("active_images", JSON.stringify([]));
           }
           
           localStorage.setItem("pdf_upload_time", Date.now().toString());
