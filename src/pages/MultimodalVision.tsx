@@ -2,6 +2,35 @@ import { useState, useRef, useEffect } from "react";
 import FloatingPanel from "../components/FloatingPanel";
 import { ScanLine, ZoomIn, FileText, BarChart3, Image as ImageIcon, UploadCloud } from "lucide-react";
 
+const STORED_API_BASE_URL =
+  typeof window !== "undefined" ? window.localStorage.getItem("active_api_base") : null;
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? STORED_API_BASE_URL ?? `http://${window.location.hostname}:8001`;
+const API_FALLBACK_URL = `http://${window.location.hostname}:8000`;
+const API_BASE_CANDIDATES = Array.from(new Set([API_BASE_URL, API_FALLBACK_URL]));
+
+const postWithFallback = async (path: string, init?: RequestInit) => {
+  let lastNetworkError: unknown = null;
+  let lastResponse: Response | null = null;
+
+  for (const baseUrl of API_BASE_CANDIDATES) {
+    try {
+      const response = await fetch(`${baseUrl}${path}`, init);
+      if (response.ok) {
+        return { response, baseUrl };
+      }
+      lastResponse = response;
+    } catch (error) {
+      lastNetworkError = error;
+    }
+  }
+
+  if (lastResponse) {
+    return { response: lastResponse, baseUrl: API_BASE_CANDIDATES[0] };
+  }
+  throw lastNetworkError ?? new Error("All API candidates failed");
+};
+
 const MultimodalVision = () => {
   const [extractedText, setExtractedText] = useState<string>("");
   const [currentBoxes, setCurrentBoxes] = useState<any[]>([]);
@@ -72,7 +101,11 @@ const MultimodalVision = () => {
   };
 
   const uploadFiles = async (selectedFiles: File[]) => {
-    const validFiles = selectedFiles.filter(f => f.type === "application/pdf");
+    const validFiles = selectedFiles.filter((f) => {
+      const isPdfMime = f.type === "application/pdf";
+      const isPdfExtension = f.name.toLowerCase().endsWith(".pdf");
+      return isPdfMime || isPdfExtension;
+    });
     if (validFiles.length === 0) {
       alert("Please upload PDF files.");
       return;
@@ -82,23 +115,24 @@ const MultimodalVision = () => {
     setIsUploading(true);
     setExtractedText(""); 
     setCurrentBoxes([]); 
-    sessionStorage.setItem("hasActiveScan", "false");
-    sessionStorage.setItem("active_keywords", JSON.stringify([]));
-    sessionStorage.setItem("active_docs", JSON.stringify({}));
-    sessionStorage.setItem("active_images", JSON.stringify([]));
-    fetch("http://localhost:8001/reset", { method: "POST" }).catch(()=>console.log("Memory flush skipped"));
+    localStorage.setItem("hasActiveScan", "false");
+    localStorage.setItem("active_keywords", JSON.stringify([]));
+    localStorage.setItem("active_docs", JSON.stringify({}));
+    localStorage.setItem("active_images", JSON.stringify([]));
+    postWithFallback("/reset", { method: "POST" }).catch(() => console.log("Memory flush skipped"));
 
     const formData = new FormData();
     validFiles.forEach(file => formData.append("files", file));
 
     try {
-      const res = await fetch("http://localhost:8001/upload/pdf", {
+      const { response: res, baseUrl } = await postWithFallback("/upload/pdf", {
         method: "POST",
         body: formData,
       });
       if (res.ok) {
+        localStorage.setItem("active_api_base", baseUrl);
         setIsScanning(true);
-        sessionStorage.setItem("hasActiveScan", "true");
+        localStorage.setItem("hasActiveScan", "true");
         try {
           const resData = await res.json();
           const documentText = resData.data?.text || "";
@@ -114,13 +148,13 @@ const MultimodalVision = () => {
           ];
 
           if (backendKeywords.length > 0) {
-             sessionStorage.setItem("active_keywords", JSON.stringify(backendKeywords));
-             sessionStorage.setItem("active_docs", JSON.stringify(backendDocs));
-             sessionStorage.setItem("active_images", JSON.stringify(backendImages));
+             localStorage.setItem("active_keywords", JSON.stringify(backendKeywords));
+             localStorage.setItem("active_docs", JSON.stringify(backendDocs));
+             localStorage.setItem("active_images", JSON.stringify(backendImages));
           } else {
-             sessionStorage.setItem("active_keywords", JSON.stringify([]));
-             sessionStorage.setItem("active_docs", JSON.stringify({}));
-             sessionStorage.setItem("active_images", JSON.stringify([]));
+             localStorage.setItem("active_keywords", JSON.stringify([]));
+             localStorage.setItem("active_docs", JSON.stringify({}));
+             localStorage.setItem("active_images", JSON.stringify([]));
           }
           
           localStorage.setItem("pdf_upload_time", Date.now().toString());
@@ -165,11 +199,14 @@ const MultimodalVision = () => {
           setExtractedText("");
         }
       } else {
-        console.error("Upload failed");
+        const errorText = await res.text().catch(() => "");
+        console.error("Upload failed", res.status, errorText);
+        alert(`Upload failed (${res.status}). Check backend server and try again.`);
         setFiles([]);
       }
     } catch (err) {
       console.error("Upload error", err);
+      alert("Upload request failed. Ensure backend is running on port 8001 or 8000.");
       setFiles([]);
     } finally {
       setIsUploading(false);

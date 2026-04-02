@@ -3,8 +3,16 @@ import FloatingPanel from "../components/FloatingPanel";
 import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw, Terminal } from "lucide-react";
 import { motion } from "framer-motion";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? `http://${window.location.hostname}:8001`;
+const resolveApiBaseCandidates = () => {
+  const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  const storedBase =
+    typeof window !== "undefined" ? window.localStorage.getItem("active_api_base") : null;
+  const fallback8001 = `http://${window.location.hostname}:8001`;
+  const fallback8000 = `http://${window.location.hostname}:8000`;
+  return Array.from(new Set([envBase, storedBase, fallback8001, fallback8000].filter(Boolean) as string[]));
+};
+
+const toWsBase = (httpBase: string) => httpBase.replace(/^http/i, "ws");
 
 const generateNodes = (count: number) => {
   const nodes: { id: number; x: number; y: number; size: number; connections: number[] }[] = [];
@@ -46,13 +54,13 @@ const SynthesisLab = () => {
   const [pdfDocs, setPdfDocs] = useState<Record<string, string[]>>({});
   const [pdfImages, setPdfImages] = useState<any[]>([]);
   const [conflictingKeywords, setConflictingKeywords] = useState<string[]>([]);
-  const [lastUploadTime, setLastUploadTime] = useState<string | null>(null);
   const [hoveredNode, setHoveredNode] = useState<{keyword: string, imgPath: string} | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const lastUploadTimeRef = useRef<string | null>(null);
   
   useEffect(() => {
     try {
-      const activeStr = sessionStorage.getItem("active_keywords");
+      const activeStr = localStorage.getItem("active_keywords");
       if (activeStr) {
         const parsed = JSON.parse(activeStr);
         if (parsed && parsed.length > 0) {
@@ -60,13 +68,17 @@ const SynthesisLab = () => {
           setHasActiveScan(true);
         }
       }
-      const activeDocsStr = sessionStorage.getItem("active_docs");
+      const activeDocsStr = localStorage.getItem("active_docs");
       if (activeDocsStr) {
         setPdfDocs(JSON.parse(activeDocsStr));
       }
-      const activeImagesStr = sessionStorage.getItem("active_images");
+      const activeImagesStr = localStorage.getItem("active_images");
       if (activeImagesStr) {
         setPdfImages(JSON.parse(activeImagesStr));
+      }
+      const currentUploadTime = localStorage.getItem("pdf_upload_time");
+      if (currentUploadTime) {
+        lastUploadTimeRef.current = currentUploadTime;
       }
     } catch (e) {
       console.error(e);
@@ -79,11 +91,15 @@ const SynthesisLab = () => {
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    visionaryEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (visionaryLogs.length > 1) {
+      visionaryEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [visionaryLogs]);
 
   useEffect(() => {
-    skepticEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (skepticLogs.length > 1) {
+      skepticEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [skepticLogs]);
 
   useEffect(() => {
@@ -99,35 +115,45 @@ const SynthesisLab = () => {
   };
 
   const fetchNodes = useCallback(async () => {
-    try {
-      setNodes(null);
-      const res = await fetch(`http://localhost:8001/nodes`);
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setNodes(data);
-      } else {
-        setNodes(data.nodes || []);
+    setNodes(null);
+    for (const base of resolveApiBaseCandidates()) {
+      try {
+        const res = await fetch(`${base}/nodes`);
+        if (!res.ok) {
+          continue;
+        }
+        localStorage.setItem("active_api_base", base);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setNodes(data);
+        } else {
+          setNodes(data.nodes || []);
+        }
+        return;
+      } catch (_e) {
+        // Try next base candidate.
       }
-    } catch (e) {
-      console.error("Backend nodes error:", e);
-      setNodes([]);
     }
+    console.error("Backend nodes error: unable to reach any API base");
+    setNodes([]);
   }, []);
 
   useEffect(() => {
     const checkStorage = () => {
       const currentUploadTime = localStorage.getItem("pdf_upload_time");
-      if (currentUploadTime && currentUploadTime !== lastUploadTime) {
-         setLastUploadTime(currentUploadTime);
-         setVisionaryLogs([{ time: "T+0.00s", msg: "System Ready" }]);
-         setSkepticLogs([{ time: "T+0.00s", msg: "System Ready" }]);
-         setIsDebating(false);
-         setFinalReportContent(null);
+      if (currentUploadTime && currentUploadTime !== lastUploadTimeRef.current) {
+         // Only reset when a *new* upload arrives after initial hydration.
+         if (lastUploadTimeRef.current !== null) {
+           setVisionaryLogs([{ time: "T+0.00s", msg: "System Ready" }]);
+           setSkepticLogs([{ time: "T+0.00s", msg: "System Ready" }]);
+           setIsDebating(false);
+           setFinalReportContent(null);
+         }
+         lastUploadTimeRef.current = currentUploadTime;
       }
 
       try {
-        const activeStr = sessionStorage.getItem("active_keywords");
+        const activeStr = localStorage.getItem("active_keywords");
         if (activeStr) {
           const parsed = JSON.parse(activeStr);
           if (parsed && parsed.length > 0) {
@@ -138,11 +164,11 @@ const SynthesisLab = () => {
             setHasActiveScan(false);
           }
         }
-        const activeDocsStr = sessionStorage.getItem("active_docs");
+        const activeDocsStr = localStorage.getItem("active_docs");
         if (activeDocsStr) {
           setPdfDocs(JSON.parse(activeDocsStr));
         }
-        const activeImagesStr = sessionStorage.getItem("active_images");
+        const activeImagesStr = localStorage.getItem("active_images");
         if (activeImagesStr) {
           setPdfImages(JSON.parse(activeImagesStr));
         }
@@ -176,17 +202,40 @@ const SynthesisLab = () => {
     setGammaScore(null);
     setConflictingKeywords([]);
 
-    const ws = new WebSocket("ws://localhost:8001/ws/swarm");
-    socketRef.current = ws;
-    ws.onopen = () => {
-      ws.send(JSON.stringify({
-        type: "start",
-        topic: "Aircraft Engine RUL"
-      }));
-    };
-    ws.onmessage = (event) => {
+    const startPayload = JSON.stringify({
+      type: "start",
+      topic: "Aircraft Engine RUL"
+    });
+
+    const wsBases = resolveApiBaseCandidates().map(toWsBase);
+    const tried = new Set<string>();
+
+    const connectWs = (index: number) => {
+      const wsBase = wsBases[index];
+      if (!wsBase || tried.has(wsBase)) {
+        setIsDebating(false);
+        setVisionaryLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Unable to connect to swarm backend." }]);
+        setSkepticLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Unable to connect to swarm backend." }]);
+        return;
+      }
+      tried.add(wsBase);
+
+      const ws = new WebSocket(`${wsBase}/ws/swarm`);
+      socketRef.current = ws;
+      let opened = false;
+
+      ws.onopen = () => {
+        opened = true;
+        localStorage.setItem("active_api_base", wsBase.replace(/^ws/i, "http"));
+        console.log("WebSocket connection opened");
+        ws.send(startPayload);
+      };
+
+      ws.onmessage = (event) => {
+      console.log("WebSocket message received:", event.data);
       try {
         const data = JSON.parse(event.data);
+        console.log("Parsed WebSocket data:", data);
         if (data.type === 'final_report') {
           const rawScore = data.gamma_score ?? 0;
           setFinalReportContent(data.content || data.message);
@@ -218,12 +267,40 @@ const SynthesisLab = () => {
              });
           }
           setSkepticLogs(prev => [...prev, logEntry]);
+        } else if (data.agent === "System" && logEntry.msg) {
+          setVisionaryLogs(prev => [...prev, { ...logEntry, msg: `[SYSTEM] ${logEntry.msg}` }]);
+          setSkepticLogs(prev => [...prev, { ...logEntry, msg: `[SYSTEM] ${logEntry.msg}` }]);
+          if (logEntry.msg.toLowerCase().includes("please upload a file first")) {
+            setIsDebating(false);
+          }
         }
       } catch (e) {
         console.error("WebSocket message parse error", e);
       }
+      };
+      
+      ws.onclose = (event) => {
+        console.log("WebSocket connection closed", event);
+        if (!opened) {
+          connectWs(index + 1);
+          return;
+        }
+        if (!finalReportContent) {
+          setIsDebating(false);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.log("WebSocket error", error);
+        if (!opened) {
+          ws.close();
+        }
+      };
     };
-  }, [hasActiveScan, pdfKeywords]);
+
+    connectWs(0);
+
+    }, [hasActiveScan, pdfKeywords, finalReportContent]);
 
   const getGammaColor = (score: number) => {
     if (score > 7.5) return "text-red-500 stroke-red-500";
@@ -604,7 +681,7 @@ const SynthesisLab = () => {
             <span className="text-bone font-mono text-[10px] uppercase tracking-wider">Multimodal Extraction: {hoveredNode.keyword}</span>
           </div>
           <div className="border border-bone/20 bg-pure-black overflow-hidden relative flex items-center justify-center p-2 mt-2 rounded-md" style={{aspectRatio: '4/3'}}>
-             <img src={`http://localhost:8001${hoveredNode.imgPath}`} alt={hoveredNode.keyword} style={{maxWidth: '250px'}} className="w-full h-full object-contain filter contrast-125" />
+             <img src={`${(localStorage.getItem("active_api_base") || resolveApiBaseCandidates()[0])}${hoveredNode.imgPath}`} alt={hoveredNode.keyword} style={{maxWidth: '250px'}} className="w-full h-full object-contain filter contrast-125" />
           </div>
         </motion.div>
       )}

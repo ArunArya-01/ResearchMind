@@ -1,43 +1,19 @@
 import asyncio
 import os
-import google.generativeai as genai
+from google import genai
 from typing import Callable, Any, Awaitable
 
-api_key = os.getenv("GOOGLE_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
 
 class SwarmOrchestrator:
     def _select_best_model(self) -> str:
-        available_models = []
-        try:
-            for m in genai.list_models():
-                if "generateContent" in getattr(m, "supported_generation_methods", []):
-                    available_models.append(m.name)
-        except Exception:
-            pass
-
-        priorities = ['models/gemini-3-flash', 'models/gemini-2.5-flash', 'models/gemini-1.5-flash']
-        selected = None
-        for p in priorities:
-            if p in available_models or p.replace('models/', '') in available_models:
-                selected = p
-                break
-                
-        if not selected:
-            if available_models:
-                selected = available_models[0]
-            else:
-                print("CRITICAL: No generative models available for this API key.")
-                selected = 'gemini-1.5-flash-latest'
-                
-        return selected.replace('models/', '')
+        # Primary target requested by product direction.
+        return 'gemini-2.5-flash-lite'
 
     def __init__(self, log_callback: Callable[[str], Awaitable[Any]]):
-        self.log_callback = log_callback
-        model_name = self._select_best_model()
-        self.model = genai.GenerativeModel(model_name)
-        self.active_overrides = []
+      self.log_callback = log_callback
+      self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+      self.model_name = self._select_best_model()
+      self.active_overrides = []
 
     def inject_override(self, command: str):
         self.active_overrides.append(command)
@@ -53,18 +29,38 @@ class SwarmOrchestrator:
         await self.log_callback(json.dumps(payload))
 
     async def _safe_generate(self, prompt: str):
+        model_candidates = [
+            self.model_name,
+            "gemini-2.5-flash-lite",
+            "models/gemini-2.5-flash-lite",
+        ]
         try:
-            return await asyncio.to_thread(self.model.generate_content, prompt)
+            last_error = None
+            for model_name in model_candidates:
+                try:
+                    response = await self.client.aio.models.generate_content(model=model_name, contents=prompt)
+                    # Persist the working alias for subsequent calls.
+                    self.model_name = model_name
+                    return response
+                except Exception as e:
+                    last_error = e
+                    # Try next alias only for model-not-found style failures.
+                    msg = str(e)
+                    if "not found" not in msg.lower() and "not supported" not in msg.lower():
+                        raise e
+            raise last_error if last_error else RuntimeError("No valid Gemini model alias available.")
         except Exception as e:
-            if '429' in str(e) or 'ResourceExhausted' in getattr(type(e), '__name__', ''):
-                await self.log_status("Agent is cooling down (Rate Limit)... Retrying in 10s.")
-                await asyncio.sleep(10)
-                return await asyncio.to_thread(self.model.generate_content, prompt)
-            raise e
+          if '429' in str(e) or 'ResourceExhausted' in str(e):
+            await self.log_status("Agent is cooling down (Rate Limit)... Retrying in 10s.")
+            await asyncio.sleep(10)
+            response = await self.client.aio.models.generate_content(model=self.model_name, contents=prompt)
+            return response
+          print(f"DEBUG: API Error: {e}")
+          raise e
 
     async def run_swarm(self, discovery_gap_data: dict, topic: str):
         print("DEBUG: Alpha Agent starting...")
-        print(f"DEBUG: Using model: {self.model.model_name}")
+        print(f"DEBUG: Using model: {self.model_name}")
         await self.log("System", "Initializing Adversarial Swarm...")
         
         context = str(discovery_gap_data)
@@ -96,7 +92,7 @@ class SwarmOrchestrator:
             
             # Run blocking API call in executor (or just await if using async client, but generic genai SDK is sync by default)
             alpha_response = await self._safe_generate(alpha_prompt)
-            hypothesis = alpha_response.text.strip()
+            hypothesis = alpha_response.candidates[0].content.parts[0].text.strip()
             
             await self.log("Visionary", f"Proposed Hypothesis:\n{hypothesis}\n")
             
@@ -144,7 +140,7 @@ class SwarmOrchestrator:
             Be direct and analytical.
             """
             beta_response = await self._safe_generate(beta_prompt)
-            critique = beta_response.text.strip()
+            critique = beta_response.candidates[0].content.parts[0].text.strip()
             
             await self.log("Skeptic", f"Critique Findings (3 Flaws):\n{critique}\n")
 
@@ -175,7 +171,7 @@ class SwarmOrchestrator:
         - "D_age": the estimated age of the primary methodology/context in years (integer).
         """
         synthesis_response = await self._safe_generate(synthesis_prompt)
-        raw_report = synthesis_response.text.strip()
+        raw_report = synthesis_response.candidates[0].content.parts[0].text.strip()
         
         # Isolate and parse the JSON block
         import re, json, math
