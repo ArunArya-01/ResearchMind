@@ -204,7 +204,7 @@ const SynthesisLab = () => {
 
     const startPayload = JSON.stringify({
       type: "start",
-      topic: "Aircraft Engine RUL"
+      topic: "the uploaded research document"
     });
 
     const wsBases = resolveApiBaseCandidates().map(toWsBase);

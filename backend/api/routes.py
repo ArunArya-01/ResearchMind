@@ -113,7 +113,7 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
             msg = json.loads(data)
             
             if msg.get("type") == "start":
-                topic = msg.get("topic", "Aircraft Engine RUL")
+                topic = msg.get("topic", "the provided research document")
                 text_context = PROCESSED_DATA.get("text", "")
                 
                 if not text_context:
