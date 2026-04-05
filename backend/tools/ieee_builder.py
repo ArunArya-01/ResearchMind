@@ -1,9 +1,11 @@
 import io
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle, FrameBreak, Flowable
+# ADDED NextPageTemplate HERE:
+from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle, FrameBreak, Flowable, NextPageTemplate
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 
+# IEEE Exact Math
 PAGE_W, PAGE_H = 595.2, 841.92
 L_MARGIN = 50.4; R_EDGE = 547.4; T_MARGIN = 53.9; B_MARGIN = 78.2
 COL_L_X0 = 50.4; COL_L_W = 231.8; COL_R_X0 = 315.6; COL_R_W = 231.8
@@ -11,6 +13,7 @@ FULL_W = R_EDGE - L_MARGIN
 HDR_H = 326; COL_H = PAGE_H - T_MARGIN - HDR_H - B_MARGIN; COL_H_P2 = PAGE_H - T_MARGIN - B_MARGIN
 INDENT = 21.6
 
+# Typography
 def mk(name, **kw): return ParagraphStyle(name, **kw)
 ST = {
     'title': mk('title', fontName='Times-Bold', fontSize=24, leading=29, alignment=TA_CENTER),
@@ -42,16 +45,24 @@ def build_ieee_pdf(paper: dict) -> bytes:
         PageTemplate(id='body', frames=[frame(COL_L_X0, B_MARGIN, COL_L_W, COL_H_P2, 'p2l'), frame(COL_R_X0, B_MARGIN, COL_R_W, COL_H_P2, 'p2r')]),
     ])
     story = []
-    ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X']
+    ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X', 'XI', 'XII']
+    
     story.append(Paragraph(paper.get('title', 'Research Synthesis Report'), ST['title'])); story.append(Spacer(1, 10))
     story.extend(build_authors(paper.get('authors', []))); story.append(Spacer(1, 6)); story.append(HRule(FULL_W)); story.append(Spacer(1, 4))
-    story.append(Paragraph(f'<i><b>Abstract</b></i>\u2014{paper.get("abstract","")}', ST['abstract'])); story.append(Spacer(1, 6)); story.append(HRule(FULL_W)); story.append(Spacer(1, 4)); story.append(FrameBreak())
+    story.append(Paragraph(f'<i><b>Abstract</b></i>\u2014{paper.get("abstract","")}', ST['abstract'])); story.append(Spacer(1, 6)); story.append(HRule(FULL_W)); story.append(Spacer(1, 4))
+    
+    # 🚨 THE FIX: Tell the engine to switch to the strict 2-column layout for the rest of the document
+    story.append(NextPageTemplate('body'))
+    story.append(FrameBreak())
+    
     for idx, sec in enumerate(paper.get('sections', [])):
         story.append(Paragraph(f'{ROMAN[idx] if idx < len(ROMAN) else str(idx+1)}. {sec.get("heading","").upper()}', ST['sec_head']))
         for i, item in enumerate(sec.get('content', [])):
             if isinstance(item, str) and item.strip(): story.append(Paragraph(item.replace("<b style=\"color:crimson;\">", "<b>").replace("</b>", "</b>"), ST['body_ni'] if i==0 else ST['body']))
+            
     refs = paper.get('references', [])
     if refs:
         story.append(Paragraph(f'{ROMAN[len(paper.get("sections", []))]}. REFERENCES', ST['sec_head']))
         for i, ref in enumerate(refs, 1): story.append(Paragraph(f'[{i}]\u2002{ref}', ST['ref']))
+        
     doc.build(story); return buf.getvalue()
