@@ -308,6 +308,25 @@ const SynthesisLab = () => {
     return "text-cyan-400 stroke-cyan-400";
   };
 
+  const downloadIEEE = async () => {
+      if (!finalReportContent) return;
+      try {
+          const response = await fetch("http://localhost:8001/download/ieee-pdf", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ markdown_content: finalReportContent })
+          });
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = "IEEE_Synthesis_Report.pdf";
+          a.click();
+      } catch (error) {
+          console.error("Error generating PDF:", error);
+      }
+  };
+
   return (
     <div className="min-h-screen bg-obsidian pt-24 px-6 pb-12">
       <div className="max-w-7xl mx-auto">
@@ -664,6 +683,14 @@ const SynthesisLab = () => {
             <div className="font-mono text-xs leading-relaxed text-pure-black/70 space-y-0.5 relative z-10">
               <div className="whitespace-pre-wrap">{finalReportContent}</div>
             </div>
+            
+            {/* Inject this button below the final report output: */}
+            <button 
+                onClick={downloadIEEE} 
+                className="mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-indigo-400 relative z-10"
+            >
+                📄 Download Full IEEE Publication
+            </button>
           </FloatingPanel>
         )}
       </div>

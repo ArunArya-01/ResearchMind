@@ -153,19 +153,33 @@ class SwarmOrchestrator:
             self.active_overrides = []
             
         synthesis_prompt = f"""
-        You are the Master Synthesizer.
-        Topic: {topic}
-        Final Hypothesis: {hypothesis}
-        Final Critique: {critique}
-        {override_text_final}
+        You are the Master Synthesizer. Topic: {topic}. Hypothesis: {hypothesis}. Critique: {critique}. {override_text_final}
         
-        Write a final 'synthesis_report.md' summarizing the findings, the final hypothesis, and acknowledging the remaining risks. Format it beautifully in Markdown.
+        Write a highly comprehensive, EXHAUSTIVE synthesis report. 
+        
+        CRITICAL REQUIREMENT 1: Format strictly mimicking an IEEE academic paper in Markdown. You MUST generate massive volume to reach a 6-page length. Write at least 4 to 6 dense paragraphs per section. DO NOT summarize. Expand deeply on theoretical mechanics.
+        
+        Use EXACTLY these headers in this order. Do NOT include a Results section:
+        # [Generate a Formal Academic Paper Title]
+        **Abstract** — [Dense 250-word academic summary]
+        ## I. Introduction
+        [Massive multi-paragraph breakdown of global context and limitations of current methods]
+        ## II. Problem Statement
+        [Exhaustive analysis of the exact problem]
+        ## III. Objectives
+        [Detailed list of specific goals and success metrics]
+        ## IV. Literature Review
+        [Deep dive into previous research methodologies and why they fail]
+        ## V. Methodology
+        [Exhaustive, highly technical breakdown of the proposed architecture and theoretical mechanics]
+        ## VI. Implementation
+        [Deep technical explanation of how this is deployed in a physical edge environment, step-by-step]
+        ## VII. Conclusion
+        [Final extensive verdict on viability and future laboratory steps]
+        ## References
+        [Generate 6-8 highly plausible, formal academic references in IEEE format]
 
-        CRITICAL REQUIREMENT 1: You MUST include a specific section heading exactly titled "<b style="color:crimson;">CRITICAL RESEARCH GAPS</b>" (including the HTML tags) detailing the safety gaps found.
-        
-        CRITICAL REQUIREMENT 2: You MUST include an 'ACTIONABLE MAINTENANCE PROTOCOL' (a 3-step bulleted list) in your report outlining exactly how to mitigate the found risks.
-        
-        CRITICAL REQUIREMENT 3: At the absolute very end of your response, output a strict JSON block wrapped in ```json ... ``` containing EXACTLY three variables based on your findings:
+        CRITICAL REQUIREMENT 2: At the absolute very end, output a strict JSON block wrapped in ```json ... ``` containing EXACTLY three variables based on your findings:
         - "G_severity": an integer/float from 1-10 assessing the safety gap severity.
         - "V_certainty": a float from 0.1 to 1.0 reflecting your confidence level.
         - "D_age": the estimated age of the primary methodology/context in years (integer).

@@ -1,10 +1,15 @@
 import asyncio
 import json
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File
+import re
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File, Response
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from google import genai
+import os
 from typing import List
 from tools.pdf_parser import parse_pdf
 from agents.swarm import SwarmOrchestrator
+from tools.ieee_builder import build_ieee_pdf
 
 router = APIRouter()
 
@@ -205,3 +210,58 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
             }
         }
     }
+
+class PDFRequest(BaseModel):
+    markdown_content: str
+
+@router.post("/download/ieee-pdf")
+async def generate_ieee_pdf(req: PDFRequest):
+    client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+    
+    prompt = f"""
+    Convert the following academic Markdown report into a strict JSON object.
+    Report: {req.markdown_content}
+
+    CRITICAL RULES:
+    1. Output ONLY valid JSON.
+    2. ABSOLUTELY NO BACKSLASHES: Do not use any backslashes (\\) or LaTeX math symbols anywhere in your response. Replace any math formulas with plain English words.
+
+    You MUST output ONLY valid JSON using this exact schema:
+    {{
+      "title": "Extract the title",
+      "abstract": "Extract the abstract paragraph",
+      "authors": [
+        {{"name": "Arun", "department": "Lead Architect", "institution": "ResearchMind"}},
+        {{"name": "Agent Alpha", "department": "Visionary Sub-System", "institution": "Neural Swarm"}},
+        {{"name": "Agent Beta", "department": "Skeptic Sub-System", "institution": "Neural Swarm"}}
+      ],
+      "sections": [
+        {{ "heading": "Extract Heading Without Roman Numerals", "content": ["Extract paragraph 1", "Extract paragraph 2"] }}
+      ],
+      "references": ["Extract reference 1", "Extract reference 2"]
+    }}
+    """
+    
+    response = await client.aio.models.generate_content(model='gemini-2.5-flash-lite', contents=prompt)
+    raw_json = response.candidates[0].content.parts[0].text.strip()
+    
+    if raw_json.startswith("```json"):
+        raw_json = raw_json[7:-3].strip()
+    elif raw_json.startswith("```"):
+        raw_json = raw_json[3:-3].strip()
+        
+    # THE BULLETPROOF SHIELD: Remove any invalid escape characters before loading
+    raw_json = re.sub(r'\\(?!["\\/bfnrtu])', '', raw_json)
+        
+    try:
+        paper_data = json.loads(raw_json)
+        pdf_bytes = build_ieee_pdf(paper_data)
+        
+        return Response(
+            content=pdf_bytes, 
+            media_type="application/pdf", 
+            headers={"Content-Disposition": "attachment; filename=IEEE_Report.pdf"}
+        )
+    except Exception as e:
+        print(f"JSON Parsing Error: {e}")
+        return Response(content=b"Failed to build PDF due to JSON format error.", status_code=500)
