@@ -46,6 +46,7 @@ const SynthesisLab = () => {
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [directorLogs, setDirectorLogs] = useState<{ time: string; msg: string }[]>([]);
   const [directorInput, setDirectorInput] = useState("");
+  const [overrideCommand, setOverrideCommand] = useState("");
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
   const [gammaScore, setGammaScore] = useState<number | null>(null);
   const [hasActiveScan, setHasActiveScan] = useState(false);
@@ -112,6 +113,20 @@ const SynthesisLab = () => {
         setDirectorLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: `OVERRIDE: ${directorInput}` }]);
         setDirectorInput("");
     }
+  };
+
+  const sendDirectorOverride = () => {
+      if (!overrideCommand.trim()) return;
+      
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+          socketRef.current.send(JSON.stringify({
+              type: "director_override",
+              command: overrideCommand
+          }));
+          setOverrideCommand(""); // Clear the input after sending
+      } else {
+          console.warn("WebSocket is not connected.");
+      }
   };
 
   const fetchNodes = useCallback(async () => {
@@ -641,6 +656,35 @@ const SynthesisLab = () => {
               className="w-full bg-pure-black border border-green-500/30 text-green-400 font-mono text-xs p-2.5 rounded focus:outline-none focus:border-green-400 transition-colors placeholder:text-green-900/50"
             />
           </div>
+
+        {/* 🎙️ Director Override (Human-in-the-Loop) */}
+        <div className="mt-6 p-4 border border-red-500/50 bg-slate-900/80 rounded-xl shadow-lg">
+            <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2 uppercase tracking-wider text-sm">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </span>
+                Director Override (Live Injection)
+            </h3>
+            <div className="flex gap-3">
+                <input 
+                    type="text" 
+                    value={overrideCommand}
+                    onChange={(e) => setOverrideCommand(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && sendDirectorOverride()}
+                    placeholder="e.g., AGENTS HALT. Pivot focus to the cybersecurity vulnerabilities..."
+                    className="flex-1 bg-slate-950 text-slate-200 border border-slate-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg px-4 py-2 outline-none transition-all"
+                />
+                <button 
+                    onClick={sendDirectorOverride}
+                    disabled={!overrideCommand.trim()}
+                    className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-2 px-6 rounded-lg transition-colors whitespace-nowrap"
+                >
+                    Inject Command
+                </button>
+            </div>
+        </div>
+
         </FloatingPanel>
 
         {/* Final Manuscript */}
