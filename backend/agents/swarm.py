@@ -155,9 +155,17 @@ class SwarmOrchestrator:
         synthesis_prompt = f"""
         You are the Master Synthesizer. Topic: {topic}. Hypothesis: {hypothesis}. Critique: {critique}. {override_text_final}
         
-        Write a highly comprehensive, EXHAUSTIVE synthesis report. 
+        CRITICAL REQUIREMENT 0 (THE FEASIBILITY GATE):
+        Before writing anything, evaluate if fusing these research documents makes logical, scientific sense. 
+        If the domains are fundamentally incompatible and a fusion lacks scientific merit, YOU MUST ABORT. 
+        If aborting, DO NOT write the IEEE paper. Instead, output ONLY this:
+        1. A large header: `# 🚨 SYNTHESIS ABORTED: INCOMPATIBLE DOMAINS`
+        2. Two short paragraphs explaining exactly why the AI agents determined these fields cannot be responsibly fused.
+        3. The mandatory JSON block at the bottom with "G_severity" set to 10.0.
         
-        CRITICAL REQUIREMENT 1: Format strictly mimicking an IEEE academic paper in Markdown. You MUST generate massive volume to reach a 6-page length. Write at least 4 to 6 dense paragraphs per section. DO NOT summarize. Expand deeply on theoretical mechanics.
+        If (and ONLY if) the domains are compatible, proceed to CRITICAL REQUIREMENT 1.
+        
+        CRITICAL REQUIREMENT 1: Format strictly mimicking an IEEE academic paper in Markdown. You MUST generate massive volume to reach a 6-page length. Write 2 to 3 dense paragraphs per section. DO NOT summarize. Expand deeply on theoretical mechanics.
         
         Use EXACTLY these headers in this order. Do NOT include a Results section:
         # [Generate a Formal Academic Paper Title]
@@ -180,7 +188,7 @@ class SwarmOrchestrator:
         [Generate 6-8 highly plausible, formal academic references in IEEE format]
 
         CRITICAL REQUIREMENT 2: At the absolute very end, output a strict JSON block wrapped in ```json ... ``` containing EXACTLY three variables based on your findings:
-        - "G_severity": an integer/float from 1-10 assessing the safety gap severity.
+        - "G_severity": an integer/float from 1-10 assessing the safety gap severity (Use 10.0 if you aborted the synthesis).
         - "V_certainty": a float from 0.1 to 1.0 reflecting your confidence level.
         - "D_age": the estimated age of the primary methodology/context in years (integer).
         """
