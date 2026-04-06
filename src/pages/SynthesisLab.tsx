@@ -44,8 +44,6 @@ const SynthesisLab = () => {
   const [nodes, setNodes] = useState<{ id: number; x: number; y: number; size: number; connections: number[] }[] | null>([]);
   const [visionaryLogs, setVisionaryLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
-  const [directorLogs, setDirectorLogs] = useState<{ time: string; msg: string }[]>([]);
-  const [directorInput, setDirectorInput] = useState("");
   const [overrideCommand, setOverrideCommand] = useState("");
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
   const [gammaScore, setGammaScore] = useState<number | null>(null);
@@ -88,7 +86,6 @@ const SynthesisLab = () => {
 
   const visionaryEndRef = useRef<HTMLDivElement>(null);
   const skepticEndRef = useRef<HTMLDivElement>(null);
-  const directorEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -102,18 +99,6 @@ const SynthesisLab = () => {
       skepticEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [skepticLogs]);
-
-  useEffect(() => {
-    directorEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [directorLogs]);
-
-  const handleDirectorSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && directorInput.trim() && socketRef.current) {
-        socketRef.current.send(JSON.stringify({ type: 'director_override', command: directorInput }));
-        setDirectorLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), msg: `OVERRIDE: ${directorInput}` }]);
-        setDirectorInput("");
-    }
-  };
 
   const sendDirectorOverride = () => {
       if (!overrideCommand.trim()) return;
@@ -624,67 +609,35 @@ const SynthesisLab = () => {
           </FloatingPanel>
         </div>
 
-        {/* DIRECTOR TERMINAL */}
+        {/* DIRECTOR OVERRIDE PANEL */}
         <FloatingPanel z={40} className="w-full mb-8 !bg-transparent !border-0 !shadow-none">
-          <div className="p-5 bg-obsidian border border-bone/20 rounded-xl shadow-[0_8px_40px_-8px_hsl(0_0%_0%_/_0.8)] backdrop-blur transition-colors focus-within:border-green-400">
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-bone/20">
-              <Terminal className="w-4 h-4 text-green-400" />
-              <span className="text-bone font-mono font-bold text-sm">DIRECTOR TERMINAL</span>
-              <span className="text-bone/40 font-mono text-xs ml-auto">Human in the Loop</span>
+            {/* 🎙️ Director Override (Human-in-the-Loop) */}
+            <div className="mt-6 p-4 border border-red-500/50 bg-slate-900/80 rounded-xl shadow-lg">
+                <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2 uppercase tracking-wider text-sm">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                    Director Override (Live Injection)
+                </h3>
+                <div className="flex gap-3">
+                    <input 
+                        type="text" 
+                        value={overrideCommand}
+                        onChange={(e) => setOverrideCommand(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && sendDirectorOverride()}
+                        placeholder="e.g., AGENTS HALT. Pivot focus to the cybersecurity vulnerabilities..."
+                        className="flex-1 bg-slate-950 text-slate-200 border border-slate-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg px-4 py-2 outline-none transition-all"
+                    />
+                    <button 
+                        onClick={sendDirectorOverride}
+                        disabled={!overrideCommand.trim()}
+                        className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-2 px-6 rounded-lg transition-colors whitespace-nowrap"
+                    >
+                        Inject Command
+                    </button>
+                </div>
             </div>
-            <div className="space-y-3 font-mono text-xs max-h-[150px] overflow-y-auto mb-4">
-              {directorLogs.length === 0 ? (
-                <div className="text-bone/30 text-center py-4">Awaiting Override Directives</div>
-              ) : (
-                directorLogs.map((msg, i) => (
-                  <div key={i}>
-                    <span className="text-green-500/80">{msg.time}</span>
-                    <p className="text-green-400 mt-0.5 font-bold">
-                      {msg.msg}
-                    </p>
-                  </div>
-                ))
-              )}
-              <div ref={directorEndRef} />
-            </div>
-            <input 
-              type="text" 
-              value={directorInput}
-              onChange={(e) => setDirectorInput(e.target.value)}
-              onKeyDown={handleDirectorSubmit}
-              placeholder="> Inject real-time system directive... (Press Enter)"
-              className="w-full bg-pure-black border border-green-500/30 text-green-400 font-mono text-xs p-2.5 rounded focus:outline-none focus:border-green-400 transition-colors placeholder:text-green-900/50"
-            />
-          </div>
-
-        {/* 🎙️ Director Override (Human-in-the-Loop) */}
-        <div className="mt-6 p-4 border border-red-500/50 bg-slate-900/80 rounded-xl shadow-lg">
-            <h3 className="text-red-400 font-bold mb-3 flex items-center gap-2 uppercase tracking-wider text-sm">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                </span>
-                Director Override (Live Injection)
-            </h3>
-            <div className="flex gap-3">
-                <input 
-                    type="text" 
-                    value={overrideCommand}
-                    onChange={(e) => setOverrideCommand(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && sendDirectorOverride()}
-                    placeholder="e.g., AGENTS HALT. Pivot focus to the cybersecurity vulnerabilities..."
-                    className="flex-1 bg-slate-950 text-slate-200 border border-slate-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg px-4 py-2 outline-none transition-all"
-                />
-                <button 
-                    onClick={sendDirectorOverride}
-                    disabled={!overrideCommand.trim()}
-                    className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-2 px-6 rounded-lg transition-colors whitespace-nowrap"
-                >
-                    Inject Command
-                </button>
-            </div>
-        </div>
-
         </FloatingPanel>
 
         {/* Final Manuscript */}
