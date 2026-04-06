@@ -1,5 +1,5 @@
 # ResearchMind
-> **Bridging Scientific Gaps with Adversarial Swarm Intelligence.**
+> **The next great discovery is hiding in the gap between two fields that have never spoken.**
 
 ---
 
