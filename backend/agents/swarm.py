@@ -32,40 +32,81 @@ class SwarmOrchestrator:
         model_candidates = [
             self.model_name,
             "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
             "models/gemini-2.5-flash-lite",
         ]
-        try:
-            last_error = None
-            for model_name in model_candidates:
-                try:
-                    response = await self.client.aio.models.generate_content(model=model_name, contents=prompt)
-                    # Persist the working alias for subsequent calls.
-                    self.model_name = model_name
-                    return response
-                except Exception as e:
-                    last_error = e
-                    # Try next alias only for model-not-found style failures.
-                    msg = str(e)
-                    if "not found" not in msg.lower() and "not supported" not in msg.lower():
+        
+        # Max 3 outer retries for 429/503
+        for attempt in range(3):
+            try:
+                last_error = None
+                for model_name in model_candidates:
+                    try:
+                        response = await self.client.aio.models.generate_content(model=model_name, contents=prompt)
+                        # Persist the working alias
+                        self.model_name = model_name
+                        return response
+                    except Exception as e:
+                        last_error = e
+                        msg = str(e).lower()
+                        # Allow falling back to other models on these errors:
+                        if "not found" in msg or "not supported" in msg or "503" in msg or "unavailable" in msg or "overloaded" in msg:
+                            continue
                         raise e
-            raise last_error if last_error else RuntimeError("No valid Gemini model alias available.")
-        except Exception as e:
-          if '429' in str(e) or 'ResourceExhausted' in str(e):
-            await self.log_status("Agent is cooling down (Rate Limit)... Retrying in 10s.")
-            await asyncio.sleep(10)
-            response = await self.client.aio.models.generate_content(model=self.model_name, contents=prompt)
-            return response
-          print(f"DEBUG: API Error: {e}")
-          raise e
+                raise last_error if last_error else RuntimeError("No valid Gemini model available.")
+            except Exception as e:
+                msg = str(e).lower()
+                if ('429' in msg or 'resourceexhausted' in msg or '503' in msg or 'unavailable' in msg) and attempt < 2:
+                    severity = "Rate Limit" if '429' in msg else "Overloaded"
+                    await self.log_status(f"API {severity} (Attempt {attempt+1}/3)... Retrying in 10s.")
+                    await asyncio.sleep(10)
+                    continue
+                print(f"DEBUG: API Error: {e}")
+                raise e
 
-    async def run_swarm(self, discovery_gap_data: dict, topic: str):
+    async def check_data_alignment(self, pdf_content: str, csv_summary: str) -> str:
+        gate_prompt = f"""You are a strict Data Science Gatekeeper.
+Evaluate this theoretical paper and this dataset:
+Theory: {pdf_content[:2000]}
+Dataset Columns & Summary: {csv_summary[:2000]}
+
+Can this specific dataset legitimately benchmark, test, or prove this specific theory? Is there a strong, logical causal link? 
+If they are completely unrelated (e.g., Blockchain theory and Diamond prices), you must block it to prevent spurious correlation.
+
+Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, or "[FUSION_TERMINATED]" if they are unrelated.
+"""
+        response = await self._safe_generate(gate_prompt)
+        return response.candidates[0].content.parts[0].text.strip()
+
+    async def run_swarm(self, discovery_gap_data: dict, topic: str, dataset_summary: str = None):
         print("DEBUG: Alpha Agent starting...")
         print(f"DEBUG: Using model: {self.model_name}")
         await self.log("System", "Initializing Adversarial Swarm...")
         
         context = str(discovery_gap_data)
+        has_pdf = bool(discovery_gap_data.get("context"))
+        has_csv = bool(dataset_summary)
+        if has_pdf and not has_csv:
+            scenario = "Theorist (PDF-only)"
+        elif not has_pdf and has_csv:
+            scenario = "Data Scientist (CSV-only)"
+        elif has_pdf and has_csv:
+            scenario = "Breakthrough (Hybrid)"
+            
+            # --- START DATA-THEORY GATEKEEPER ---
+            await self.log("System", "Running Data-Theory Gate pre-check...")
+            pdf_content = discovery_gap_data.get("context", "")
+            gate_text = await self.check_data_alignment(pdf_content, dataset_summary)
+            if "[FUSION_TERMINATED]" in gate_text:
+                raise Exception("[FUSION_TERMINATED]")
+            # --- END DATA-THEORY GATEKEEPER ---
+            
+        else:
+            scenario = "System Ready (None)"
+            
         hypothesis = ""
         critique = ""
+        full_transcript = []
         
         for iteration in range(1, 3):
             await self.log("System", f"Starting Iteration {iteration}/2")
@@ -80,12 +121,14 @@ class SwarmOrchestrator:
             
             alpha_prompt = f"""
             You are Agent Alpha, the Visionary.
+            Scenario: {scenario}
             Topic: {topic}
-            Discovery Gap Data: {context}
+            Discovery Gap Data (PDF): {context}
+            Empirical Dataset Summary (CSV): {dataset_summary if dataset_summary else 'None'}
             Previous Critique: {critique}
             {override_text_alpha}
             
-            Formulate a bold, innovative hypothesis based on the 'Red Anomaly' discovery gaps.
+            Formulate a bold, innovative hypothesis.
             If there was a previous critique, address those flaws in your new hypothesis.
             Keep it concise but impactful.
             """
@@ -93,6 +136,7 @@ class SwarmOrchestrator:
             # Run blocking API call in executor (or just await if using async client, but generic genai SDK is sync by default)
             alpha_response = await self._safe_generate(alpha_prompt)
             hypothesis = alpha_response.candidates[0].content.parts[0].text.strip()
+            full_transcript.append(f"Visionary: {hypothesis}")
             
             await self.log("Visionary", f"Proposed Hypothesis:\n{hypothesis}\n")
             
@@ -141,11 +185,25 @@ class SwarmOrchestrator:
             """
             beta_response = await self._safe_generate(beta_prompt)
             critique = beta_response.candidates[0].content.parts[0].text.strip()
+            full_transcript.append(f"Skeptic: {critique}")
             
             await self.log("Skeptic", f"Critique Findings (3 Flaws):\n{critique}\n")
 
+        # DuckDuckGo Novelty Verification
+        await self.log("System", "Verifying novelty via DuckDuckGo Live Search...")
+        novelty_context = ""
+        try:
+            from duckduckgo_search import DDGS
+            results = DDGS().text(f"'{hypothesis}' research", max_results=3)
+            novelty_context = "\\n".join([r.get('body', '') for r in results])
+            await self.log("System", f"Found live context for novelty verification.")
+        except Exception as e:
+            print(f"DEBUG: DDG Search failed - {e}")
+            novelty_context = "Could not reach DuckDuckGo for live verification."
+            await self.log("System", "DuckDuckGo Live Search failed.")
+
         # Final Synthesis
-        await self.log("System", "Generating Final Synthesis Report...")
+        await self.log("System", "Generating Final Synthesis Reports...")
         
         override_text_final = ""
         if self.active_overrides:
@@ -192,6 +250,44 @@ class SwarmOrchestrator:
         - "V_certainty": a float from 0.1 to 1.0 reflecting your confidence level.
         - "D_age": the estimated age of the primary methodology/context in years (integer).
         """
+        
+        discovery_prompt = f"""
+        You are the Master Synthesizer. Scenario: {scenario}. 
+        Topic: {topic}. 
+        
+        Hypothesis: 
+        {hypothesis}
+        
+        Debate Transcript:
+        {"\\n\\n".join(full_transcript)}
+        
+        Empirical Math context (if any):
+        {dataset_summary if dataset_summary else 'None'}
+        
+        Novelty Verification Context (DDG):
+        {novelty_context}
+        
+        {override_text_final}
+        
+        Generate a comprehensive Discovery Report in Markdown.
+        It MUST contain the following sections exactly:
+        # Discovery Report
+        ## 1. Core Hypothesis
+        [Explain the hypothesis clearly and concisely.]
+        ## 2. Empirical Grounding & Data Tables
+        [Analyze and present the CSV math/dataset summary. Output a markdown table summarizing the data. If no CSV text is provided, state that empirical data was not supplied.]
+        ## 3. Swarm Debate Summary
+        [Logically summarize the core arguments between the Visionary and Skeptic based on the transcript to show the resolution of flaws. Structure it as a debate format (e.g. Vision Agent: ... Skeptic Agent: ...)]
+        ## 4. Novelty Verification
+        [Evaluate the hypothesis against the DuckDuckGo live search context to assess true novelty in the field.]
+        ## 5. Architectural Flow
+        [Create a Mermaid.js diagram representing the system architecture or hypothesis flow inside a ```mermaid ... ``` block. Use graph TD; syntax.]
+        """
+        
+        # Generation calls
+        discovery_response = await self._safe_generate(discovery_prompt)
+        discovery_report = discovery_response.candidates[0].content.parts[0].text.strip()
+        
         synthesis_response = await self._safe_generate(synthesis_prompt)
         raw_report = synthesis_response.candidates[0].content.parts[0].text.strip()
         
@@ -211,16 +307,20 @@ class SwarmOrchestrator:
                 gamma_score = (g_sev * v_cert) * math.log10(d_age + 2)
                 
                 # Strip the json block dynamically from the manuscript
-                report = raw_report.replace(json_match.group(0), "").strip()
+                ieee_report = raw_report.replace(json_match.group(0), "").strip()
             except Exception as e:
                 print(f"DEBUG: Failed to parse Gamma JSON: {e}")
-                report = raw_report
+                ieee_report = raw_report
         else:
-            report = raw_report
+            ieee_report = raw_report
         
-        report_path = os.path.join(os.getcwd(), "synthesis_report.md")
+        report_path = os.path.join(os.getcwd(), "ieee_report.md")
         with open(report_path, "w") as f:
-            f.write(report)
+            f.write(ieee_report)
             
         await self.log("System", f"Swarm complete. Gamma Score: {gamma_score:.2f}")
-        return report, gamma_score
+        return {
+            "discovery_report": discovery_report,
+            "ieee_manuscript": ieee_report,
+            "gamma_score": gamma_score
+        }

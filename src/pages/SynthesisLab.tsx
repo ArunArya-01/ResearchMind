@@ -46,6 +46,7 @@ const SynthesisLab = () => {
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [overrideCommand, setOverrideCommand] = useState("");
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
+  const [ieeeManuscript, setIeeeManuscript] = useState<string | null>(null);
   const [gammaScore, setGammaScore] = useState<number | null>(null);
   const [hasActiveScan, setHasActiveScan] = useState(false);
   const [isDebating, setIsDebating] = useState(false);
@@ -204,7 +205,8 @@ const SynthesisLab = () => {
 
     const startPayload = JSON.stringify({
       type: "start",
-      topic: "the uploaded research document"
+      topic: "the uploaded research document",
+      dataset_summary: localStorage.getItem("dataset_summary") || ""
     });
 
     const wsBases = resolveApiBaseCandidates().map(toWsBase);
@@ -238,7 +240,8 @@ const SynthesisLab = () => {
         console.log("Parsed WebSocket data:", data);
         if (data.type === 'final_report') {
           const rawScore = data.gamma_score ?? 0;
-          setFinalReportContent(data.content || data.message);
+          setFinalReportContent(data.discovery_report || data.content || data.message);
+          setIeeeManuscript(data.ieee_manuscript || "");
           setGammaScore(rawScore);
           
           try {
@@ -270,7 +273,8 @@ const SynthesisLab = () => {
         } else if (data.agent === "System" && logEntry.msg) {
           setVisionaryLogs(prev => [...prev, { ...logEntry, msg: `[SYSTEM] ${logEntry.msg}` }]);
           setSkepticLogs(prev => [...prev, { ...logEntry, msg: `[SYSTEM] ${logEntry.msg}` }]);
-          if (logEntry.msg.toLowerCase().includes("please upload a file first")) {
+          const msgLower = logEntry.msg.toLowerCase();
+          if (msgLower.includes("please upload a file first") || msgLower.includes("fusion terminated") || msgLower.includes("error")) {
             setIsDebating(false);
           }
         }
@@ -309,12 +313,13 @@ const SynthesisLab = () => {
   };
 
   const downloadIEEE = async () => {
-      if (!finalReportContent) return;
+      if (!ieeeManuscript) return;
       try {
-          const response = await fetch("http://localhost:8001/download/ieee-pdf", {
+          const activeApiBase = localStorage.getItem("active_api_base") || "http://localhost:8000";
+          const response = await fetch(`${activeApiBase}/download/ieee-pdf`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ markdown_content: finalReportContent })
+              body: JSON.stringify({ markdown_content: ieeeManuscript })
           });
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
@@ -324,6 +329,26 @@ const SynthesisLab = () => {
           a.click();
       } catch (error) {
           console.error("Error generating PDF:", error);
+      }
+  };
+
+  const downloadDiscoveryReport = async () => {
+      if (!finalReportContent) return;
+      try {
+          const activeApiBase = localStorage.getItem("active_api_base") || "http://localhost:8000";
+          const response = await fetch(`${activeApiBase}/download/discovery-report`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ markdown_content: finalReportContent })
+          });
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = "Discovery_Report.md";
+          a.click();
+      } catch (error) {
+          console.error("Error generating Discovery Report:", error);
       }
   };
 
@@ -682,12 +707,20 @@ const SynthesisLab = () => {
             </div>
             
             {/* Inject this button below the final report output: */}
-            <button 
-                onClick={downloadIEEE} 
-                className="mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-indigo-400 relative z-10"
-            >
-                📄 Download Full IEEE Publication
-            </button>
+            <div className="mt-6 flex flex-col sm:flex-row gap-4 relative z-10 w-full">
+              <button 
+                  onClick={downloadDiscoveryReport} 
+                  className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-cyan-400"
+              >
+                  📄 Download Discovery Report
+              </button>
+              <button 
+                  onClick={downloadIEEE} 
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-indigo-400"
+              >
+                  🎓 Download IEEE Manuscript
+              </button>
+            </div>
           </FloatingPanel>
         )}
       </div>

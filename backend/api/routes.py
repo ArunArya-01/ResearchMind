@@ -10,6 +10,12 @@ from typing import List
 from tools.pdf_parser import parse_pdf
 from agents.swarm import SwarmOrchestrator
 from tools.ieee_builder import build_ieee_pdf
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+import pandas as pd
+import io
 
 router = APIRouter()
 
@@ -94,22 +100,32 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
         
         active_orchestrator = None
         
-        async def run_swarm_task(topic, text_context):
+        async def run_swarm_task(topic, text_context, dataset_summary):
             nonlocal active_orchestrator
             async def log_adapter(msg_str: str):
                 await manager.broadcast(json.loads(msg_str))
                 
             active_orchestrator = SwarmOrchestrator(log_callback=log_adapter)
             try:
-                report, gamma_score = await active_orchestrator.run_swarm(discovery_gap_data={"context": text_context}, topic=topic)
+                report_data = await active_orchestrator.run_swarm(discovery_gap_data={"context": text_context}, topic=topic, dataset_summary=dataset_summary)
                 await manager.broadcast({
                     "type": "final_report",
                     "agent": "System",
-                    "content": report,
-                    "gamma_score": gamma_score
+                    "content": report_data.get("discovery_report", ""),
+                    "discovery_report": report_data.get("discovery_report", ""),
+                    "ieee_manuscript": report_data.get("ieee_manuscript", ""),
+                    "gamma_score": report_data.get("gamma_score", 0.0)
                 })
             except Exception as e:
-                await manager.broadcast({"agent": "System", "message": f"Swarm Generator Error: {str(e)}"})
+                err_msg = str(e)
+                if "[FUSION_TERMINATED]" in err_msg:
+                    await manager.broadcast({
+                        "status": "error",
+                        "agent": "System",
+                        "message": "FUSION TERMINATED: Spurious correlation detected. The uploaded dataset lacks a scientific causal link to benchmark the provided theory."
+                    })
+                else:
+                    await manager.broadcast({"agent": "System", "message": f"Swarm Generator Error: {err_msg}"})
             finally:
                 active_orchestrator = None
 
@@ -119,14 +135,15 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
             
             if msg.get("type") == "start":
                 topic = msg.get("topic", "the provided research document")
+                dataset_summary = msg.get("dataset_summary", "")
                 text_context = PROCESSED_DATA.get("text", "")
                 
-                if not text_context:
-                    await websocket.send_json({"agent": "System", "message": "Please upload a file first."})
+                if not text_context and not dataset_summary:
+                    await websocket.send_json({"agent": "System", "message": "Please upload a file or dataset first."})
                     continue
                 
                 # Mount the swarm engine fully asynchronously in the background
-                asyncio.create_task(run_swarm_task(topic, text_context))
+                asyncio.create_task(run_swarm_task(topic, text_context, dataset_summary))
                 
             elif msg.get("type") == "director_override":
                 cmd = msg.get("command", "")
@@ -214,54 +231,129 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
 class PDFRequest(BaseModel):
     markdown_content: str
 
+@router.post("/upload-dataset")
+async def upload_dataset(files: List[UploadFile] = File(...)):
+    summaries = []
+    for file in files:
+        contents = await file.read()
+        try:
+            df = pd.read_csv(io.BytesIO(contents))
+            summary_str = f"Dataset: {file.filename}\\nRows: {df.shape[0]}, Columns: {df.shape[1]}\\n"
+            summary_str += "Columns: " + ", ".join(df.columns.tolist()) + "\\n"
+            summary_str += df.describe().to_string()
+            summaries.append(summary_str)
+        except Exception as e:
+            summaries.append(f"Failed to parse {file.filename}: {e}")
+            
+    return {"status": "success", "summary": "\\n\\n".join(summaries)}
+
+@router.post("/download/discovery-report")
+async def generate_discovery_report(req: PDFRequest):
+    return Response(
+        content=req.markdown_content.encode('utf-8'),
+        media_type="text/markdown",
+        headers={"Content-Disposition": "attachment; filename=Discovery_Report.md"}
+    )
+
+
 @router.post("/download/ieee-pdf")
 async def generate_ieee_pdf(req: PDFRequest):
-    client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-    
-    prompt = f"""
-    Convert the following academic Markdown report into a strict JSON object.
-    Report: {req.markdown_content}
-
-    CRITICAL RULES:
-    1. Output ONLY valid JSON.
-    2. ABSOLUTELY NO BACKSLASHES: Do not use any backslashes (\\) or LaTeX math symbols anywhere in your response. Replace any math formulas with plain English words.
-
-    You MUST output ONLY valid JSON using this exact schema:
-    {{
-      "title": "Extract the title",
-      "abstract": "Extract the abstract paragraph",
-      "authors": [
-        {{"name": "Arun", "department": "Lead Architect", "institution": "ResearchMind"}},
-        {{"name": "Agent Alpha", "department": "Visionary Sub-System", "institution": "Neural Swarm"}},
-        {{"name": "Agent Beta", "department": "Skeptic Sub-System", "institution": "Neural Swarm"}}
-      ],
-      "sections": [
-        {{ "heading": "Extract Heading Without Roman Numerals", "content": ["Extract paragraph 1", "Extract paragraph 2"] }}
-      ],
-      "references": ["Extract reference 1", "Extract reference 2"]
-    }}
-    """
-    
-    response = await client.aio.models.generate_content(model='gemini-2.5-flash-lite', contents=prompt)
-    raw_json = response.candidates[0].content.parts[0].text.strip()
-    
-    if raw_json.startswith("```json"):
-        raw_json = raw_json[7:-3].strip()
-    elif raw_json.startswith("```"):
-        raw_json = raw_json[3:-3].strip()
-        
-    # THE BULLETPROOF SHIELD: Remove any invalid escape characters before loading
-    raw_json = re.sub(r'\\(?!["\\/bfnrtu])', '', raw_json)
-        
     try:
-        paper_data = json.loads(raw_json)
-        pdf_bytes = build_ieee_pdf(paper_data)
+        # STEP 1: GHOSTWRITE THE ACADEMIC PAPER
+        client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+        prompt = f"""
+        You are a PhD-level academic ghostwriter. 
+        I will provide you with a raw 'Discovery Report' containing a hypothesis generated by an AI Swarm.
         
+        Your task: Write a highly formal, strictly formatted academic research paper based on the Swarm's findings. Ensure the content is novel, deeply technical, and avoids generic filler.
+        
+        You MUST format the output EXACTLY like this using Markdown:
+        
+        # [Insert a highly academic, professional Title]
+        
+        **Abstract**—[Write a 200-word comprehensive abstract summarizing the problem, proposed methodology, and expected impact. Start exactly with the bold word 'Abstract' followed by an em-dash.]
+        
+        ## I. INTRODUCTION
+        [Write the introduction...]
+        
+        ## II. PROBLEM STATEMENT
+        [Detail the core problem and limitations of current approaches...]
+        
+        ## III. OBJECTIVES
+        [List the primary objectives of this proposed research...]
+        
+        ## IV. LITERATURE REVIEW
+        [Synthesize a theoretical background based on the domains discussed in the report...]
+        
+        ## V. METHODOLOGY
+        [Detail the theoretical or empirical methodology proposed to test the hypothesis...]
+        
+        ## VI. IMPLEMENTATION
+        [Describe the technical architecture, algorithms, or physical setup required...]
+        
+        ## VII. CONCLUSION
+        [Summarize the findings and future scope...]
+        
+        ## VIII. REFERENCES
+        [Generate 3 to 5 plausible, highly relevant academic references formatted strictly in IEEE citation style (e.g., [1] A. Smith, "Title", Journal, Year.)]
+        
+        Here is the raw Discovery Report to base the paper on:
+        {req.markdown_content}
+        """
+        
+        response = await client.aio.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+        academic_paper_text = response.text
+        
+        # STEP 2: FORMAT INTO 2-COLUMN IEEE PDF
+        buffer = io.BytesIO()
+        doc = BaseDocTemplate(buffer, pagesize=letter, leftMargin=0.75*inch, rightMargin=0.75*inch, topMargin=0.75*inch, bottomMargin=0.75*inch)
+        frameWidth = (doc.width / 2.0) - 0.125*inch
+        left_frame = Frame(doc.leftMargin, doc.bottomMargin, frameWidth, doc.height, id='left')
+        right_frame = Frame(doc.leftMargin + frameWidth + 0.25*inch, doc.bottomMargin, frameWidth, doc.height, id='right')
+        doc.addPageTemplates([PageTemplate(id='TwoCol', frames=[left_frame, right_frame])])
+
+        # --- REPORTLAB STYLING ---
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('IEEETitle', parent=styles['Normal'], fontName='Times-Bold', fontSize=16, leading=20, spaceAfter=24, alignment=1) # Centered, large
+        abstract_style = ParagraphStyle('IEEEAbstract', parent=styles['Normal'], fontName='Times-BoldItalic', fontSize=9, leading=11, spaceAfter=14, alignment=4, leftIndent=0.1*inch, rightIndent=0.1*inch)
+        h1_style = ParagraphStyle('IEEEH1', parent=styles['Normal'], fontName='Times-Bold', fontSize=10, leading=12, spaceBefore=12, spaceAfter=6, alignment=1, textTransform='uppercase')
+        body_style = ParagraphStyle('IEEEBody', parent=styles['Normal'], fontName='Times-Roman', fontSize=10, leading=12, spaceAfter=8, alignment=4, firstLineIndent=0.15*inch)
+        ref_style = ParagraphStyle('IEEERef', parent=styles['Normal'], fontName='Times-Roman', fontSize=9, leading=11, spaceAfter=4, alignment=4)
+
+        story = []
+        lines = academic_paper_text.split('\n')
+        
+        # --- REPORTLAB PARSING ---
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Convert bold text for ReportLab
+            clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', line)
+            
+            if clean_line.startswith('# '):
+                story.append(Paragraph(clean_line.replace('# ', ''), title_style))
+            elif clean_line.startswith('<b>Abstract</b>') or clean_line.startswith('**Abstract**'):
+                story.append(Paragraph(clean_line, abstract_style))
+            elif clean_line.startswith('## '):
+                story.append(Paragraph(clean_line.replace('## ', ''), h1_style))
+            elif clean_line.startswith('[') and ']' in clean_line[:5]: 
+                # Catch references like [1], [2]
+                story.append(Paragraph(clean_line, ref_style))
+            elif clean_line.startswith('- ') or clean_line.startswith('* '):
+                story.append(Paragraph(clean_line, body_style))
+            elif not clean_line.startswith('```') and not clean_line.startswith('graph'):
+                story.append(Paragraph(clean_line, body_style))
+
+        doc.build(story)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+
         return Response(
-            content=pdf_bytes, 
-            media_type="application/pdf", 
-            headers={"Content-Disposition": "attachment; filename=IEEE_Report.pdf"}
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=IEEE_Manuscript.pdf"}
         )
     except Exception as e:
-        print(f"JSON Parsing Error: {e}")
-        return Response(content=b"Failed to build PDF due to JSON format error.", status_code=500)
+        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)

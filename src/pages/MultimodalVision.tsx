@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import FloatingPanel from "../components/FloatingPanel";
-import { ScanLine, ZoomIn, FileText, BarChart3, Image as ImageIcon, UploadCloud } from "lucide-react";
+import { ScanLine, ZoomIn, FileText, BarChart3, Image as ImageIcon, UploadCloud, CheckCircle, Trash2 } from "lucide-react";
 
 const STORED_API_BASE_URL =
   typeof window !== "undefined" ? window.localStorage.getItem("active_api_base") : null;
@@ -40,7 +40,10 @@ const MultimodalVision = () => {
   const [isDragActive, setIsDragActive] = useState(false);
   const [visibleLogs, setVisibleLogs] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [highlightWord, setHighlightWord] = useState<string>("");
+  const [isPdfUploaded, setIsPdfUploaded] = useState(false);
+  const [isCsvUploaded, setIsCsvUploaded] = useState(false);
 
   useEffect(() => {
     const handleStorage = () => {
@@ -97,6 +100,38 @@ const MultimodalVision = () => {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       await uploadFiles(Array.from(e.target.files));
+    }
+  };
+
+  const handleCsvSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const validFiles = Array.from(e.target.files).filter(f => f.name.toLowerCase().endsWith(".csv"));
+      if (validFiles.length === 0) {
+        alert("Please upload CSV files.");
+        return;
+      }
+      setIsUploading(true);
+      const formData = new FormData();
+      validFiles.forEach(file => formData.append("files", file));
+      try {
+        const { response: res } = await postWithFallback("/upload-dataset", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          localStorage.setItem("dataset_summary", resData.summary || "");
+          localStorage.setItem("hasActiveScan", "true");
+          setIsCsvUploaded(true);
+        } else {
+          alert("Failed to process CSV dataset.");
+        }
+      } catch(err) {
+        console.error(err);
+        alert("Upload error for CSV.");
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -177,6 +212,7 @@ const MultimodalVision = () => {
             { label: "Pages Scanned", count: elementsInfo.pages || 0 },
             { label: "References", count: elementsInfo.references || 0 },
           ]);
+          setIsPdfUploaded(true);
 
           try {
             const existingUploads = JSON.parse(localStorage.getItem("recent_uploads") || "[]");
@@ -213,63 +249,116 @@ const MultimodalVision = () => {
     }
   };
 
+  const flushDrive = async () => {
+    localStorage.removeItem("dataset_summary");
+    localStorage.removeItem("hasActiveScan");
+    localStorage.removeItem("active_keywords");
+    localStorage.removeItem("active_docs");
+    localStorage.removeItem("active_images");
+    localStorage.removeItem("pdf_upload_time");
+    setIsPdfUploaded(false);
+    setIsCsvUploaded(false);
+    setIsScanning(false);
+    setFiles([]);
+    setExtractedText("");
+    setCurrentBoxes([]);
+    setElementsFound([{ label: "Total Elements", count: 0 }]);
+    setExtractionLogs([]);
+    try {
+      await postWithFallback("/reset", { method: "POST" });
+      alert("Reactor Core Flushed. Data streams purged.");
+    } catch(e) {
+      alert("Backend flush failed.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-obsidian pt-24 px-6 pb-12">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-10 text-center">
+        <div className="mb-10 text-center relative">
           <h1 className="text-crimson font-display text-5xl font-bold tracking-tight mb-3">
             Multimodal Vision
           </h1>
           <p className="text-bone/40 font-mono text-sm">
             Laser-scanning documents · Extracting visual elements · Building connections
           </p>
+          <button onClick={flushDrive} className="absolute top-0 right-0 p-2 border border-crimson/50 text-crimson hover:bg-crimson/10 rounded font-mono text-xs flex items-center gap-2 transition-colors">
+            <Trash2 className="w-4 h-4" />
+            Purge Reactor Memory
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* PDF Viewer - Center */}
           <div className="lg:col-span-2">
             <FloatingPanel z={50} className="relative overflow-hidden border border-crimson">
-              {!isScanning && files.length === 0 ? (
-                <>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    multiple
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <div
-                    className={`relative p-12 min-h-[500px] flex flex-col items-center justify-center transition-colors cursor-pointer ${
-                      isDragActive ? "bg-crimson/10 border-2 border-dashed border-crimson" : "bg-transparent border-2 border-dashed border-crimson/30 hover:bg-black/5"
-                    }`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <UploadCloud className={`w-12 h-12 mb-4 ${isDragActive ? "text-crimson" : "text-crimson/60"}`} />
-                    <h3 className="text-pure-black font-display text-xl font-bold mb-2">
-                      {isUploading ? "Uploading..." : isDragActive ? "Drop PDF here" : "Upload Manuscript"}
-                    </h3>
-                    <p className="text-pure-black/60 font-mono text-xs text-center">
-                      Drag and drop your PDF here to begin multimodal synthesis.
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="p-4 border-b border-crimson/20 flex items-center gap-3 relative z-10">
-                    <FileText className="w-4 h-4 text-pure-black/50" />
-                    <span className="text-pure-black font-mono text-xs">{files.map(f => f.name).join(", ") || "multi_modal_synthesis_2024.pdf"}</span>
-                    <div className="ml-auto flex items-center gap-2">
-                      <ScanLine className={`w-4 h-4 text-crimson ${isScanning ? "animate-pulse" : ""}`} />
-                      <span className="text-crimson font-mono text-xs">{isScanning ? "Scanning..." : "Processing..."}</span>
-                    </div>
-                  </div>
+              <input
+                type="file"
+                accept=".pdf"
+                multiple
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <input
+                type="file"
+                accept=".csv"
+                multiple
+                ref={csvInputRef}
+                onChange={handleCsvSelect}
+                className="hidden"
+              />
+              
+              <div className="flex w-full border-b border-crimson/20">
+                <div
+                  className={`flex-1 p-6 flex flex-col items-center justify-center transition-colors cursor-pointer border-r border-crimson/30 hover:bg-black/5 ${isPdfUploaded ? 'bg-black/5' : ''}`}
+                  onClick={() => !isPdfUploaded && !isUploading && fileInputRef.current?.click()}
+                >
+                  {isPdfUploaded ? (
+                    <>
+                      <CheckCircle className="w-8 h-8 mb-2 text-crimson" />
+                      <h3 className="text-pure-black font-display text-lg font-bold mb-1 text-center">✅ PDF Uploaded</h3>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-8 h-8 mb-2 text-crimson" />
+                      <h3 className="text-pure-black font-display text-lg font-bold mb-1 text-center">Upload Literature (PDF)</h3>
+                      <p className="text-pure-black/60 font-mono text-[10px] text-center">Extract qualitative data.</p>
+                    </>
+                  )}
+                </div>
+                <div
+                  className={`flex-1 p-6 flex flex-col items-center justify-center transition-colors cursor-pointer hover:bg-black/5 ${isCsvUploaded ? 'bg-black/5' : ''}`}
+                  onClick={() => !isCsvUploaded && !isUploading && csvInputRef.current?.click()}
+                >
+                  {isCsvUploaded ? (
+                    <>
+                      <CheckCircle className="w-8 h-8 mb-2 text-cyan-400" />
+                      <h3 className="text-pure-black font-display text-lg font-bold mb-1 text-center">✅ CSV Uploaded</h3>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-8 h-8 mb-2 text-cyan-400" />
+                      <h3 className="text-pure-black font-display text-lg font-bold mb-1 text-center">Upload Dataset (CSV)</h3>
+                      <p className="text-pure-black/60 font-mono text-[10px] text-center">Extract quantitative empirical data.</p>
+                    </>
+                  )}
+                </div>
+              </div>
 
-                  <div className="relative p-6 min-h-[500px] font-mono text-xs leading-relaxed text-pure-black/70">
-                    {/* Laser scan line */}
+              {isPdfUploaded && (
+                <div className="p-4 border-b border-crimson/20 flex items-center gap-3 relative z-10 bg-black/5">
+                  <FileText className="w-4 h-4 text-pure-black/50" />
+                  <span className="text-pure-black font-mono text-xs">{files.map(f => f.name).join(", ") || "multi_modal_synthesis_2024.pdf"}</span>
+                  <div className="ml-auto flex items-center gap-2">
+                    <ScanLine className={`w-4 h-4 text-crimson ${isScanning ? "animate-pulse" : ""}`} />
+                    <span className="text-crimson font-mono text-xs">{isScanning ? "Scanning..." : "Processing..."}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="relative p-6 min-h-[400px] font-mono text-xs leading-relaxed text-pure-black/70">
+                {/* Laser scan line */}
                     {isScanning && (
                       <div className="laser-line animate-[scan_4s_linear_infinite]" />
                     )}
@@ -315,8 +404,7 @@ const MultimodalVision = () => {
                       </div>
                     ))}
                   </div>
-                </>
-              )}
+{/* REMOVED UNBALANCED TAGS */}
             </FloatingPanel>
           </div>
 

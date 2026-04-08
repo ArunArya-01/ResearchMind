@@ -9,3 +9,5 @@ python-dotenv
 requests
 chromadb
 reportlab
+pandas
+duckduckgo-search

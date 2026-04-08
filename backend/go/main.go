@@ -36,6 +36,8 @@ func main() {
 	mux.HandleFunc("/", withCORS(rootHandler))
 	mux.HandleFunc("/nodes", withCORS(nodesHandler))
 	mux.HandleFunc("/upload/pdf", withCORS(uploadProxyHandler))
+	mux.HandleFunc("/upload-dataset", withCORS(datasetProxyHandler))
+	mux.HandleFunc("/download/", withCORS(downloadProxyHandler))
 	mux.HandleFunc("/ws/swarm", wsSwarmProxyHandler)
 
 	port := getenv("GO_BACKEND_PORT", "8000")
@@ -168,6 +170,70 @@ func uploadProxyHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Proxying PDF upload: %s to Python...", r.URL.Path)
 
 	upstreamURL := fmt.Sprintf("%s/upload/pdf", pythonHTTPBaseURL())
+	proxyReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, upstreamURL, r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("proxy request build failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+	proxyReq.Header = r.Header.Clone()
+
+	resp, err := (&http.Client{Timeout: 300 * time.Second}).Do(proxyReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("python backend unavailable: %v", err), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	copyHeaders(w.Header(), resp.Header)
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, resp.Body)
+}
+
+func datasetProxyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Printf("Proxying CSV upload: %s to Python...", r.URL.Path)
+
+	upstreamURL := fmt.Sprintf("%s/upload-dataset", pythonHTTPBaseURL())
+	proxyReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, upstreamURL, r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("proxy request build failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+	proxyReq.Header = r.Header.Clone()
+
+	resp, err := (&http.Client{Timeout: 300 * time.Second}).Do(proxyReq)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("python backend unavailable: %v", err), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	copyHeaders(w.Header(), resp.Header)
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, resp.Body)
+}
+
+func downloadProxyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Printf("Proxying download: %s to Python...", r.URL.Path)
+
+	upstreamURL := fmt.Sprintf("%s%s", pythonHTTPBaseURL(), r.URL.Path)
 	proxyReq, err := http.NewRequestWithContext(r.Context(), http.MethodPost, upstreamURL, r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("proxy request build failed: %v", err), http.StatusInternalServerError)

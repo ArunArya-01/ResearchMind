@@ -58,7 +58,30 @@ def build_ieee_pdf(paper: dict) -> bytes:
     for idx, sec in enumerate(paper.get('sections', [])):
         story.append(Paragraph(f'{ROMAN[idx] if idx < len(ROMAN) else str(idx+1)}. {sec.get("heading","").upper()}', ST['sec_head']))
         for i, item in enumerate(sec.get('content', [])):
-            if isinstance(item, str) and item.strip(): story.append(Paragraph(item.replace("<b style=\"color:crimson;\">", "<b>").replace("</b>", "</b>"), ST['body_ni'] if i==0 else ST['body']))
+            if isinstance(item, str) and item.strip():
+                import re
+                lines = item.split('\n')
+                safe_lines = []
+                in_code_block = False
+                for line in lines:
+                    stripped = line.strip()
+                    if stripped.startswith('```'):
+                        in_code_block = not in_code_block
+                        continue
+                    if in_code_block:
+                        continue
+                    if stripped.startswith('graph TD') or stripped.startswith('mermaid') or stripped.startswith('json'):
+                        continue
+                    if stripped.startswith('|'):
+                        continue
+                    
+                    # Convert markdown bold texts
+                    line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', line)
+                    safe_lines.append(line)
+                    
+                safe_item = " ".join(safe_lines).strip()
+                if safe_item:
+                    story.append(Paragraph(safe_item.replace("<b style=\"color:crimson;\">", "<b>").replace("</b>", "</b>"), ST['body_ni'] if i==0 else ST['body']))
             
     refs = paper.get('references', [])
     if refs:

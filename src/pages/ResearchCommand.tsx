@@ -81,7 +81,7 @@ const ResearchCommand = () => {
 
                 return (
                   <div
-                    key={p.id || idx}
+                    key={`${p.id}-${idx}`}
                     className="glass-panel p-5 cursor-pointer group relative overflow-hidden flex flex-col justify-between"
                     style={{ transformStyle: "preserve-3d", transform: "translateZ(50px)" }}
                   >
