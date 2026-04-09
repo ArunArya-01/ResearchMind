@@ -2,9 +2,9 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-print(f"API Key Loaded: {bool(os.getenv('GOOGLE_API_KEY'))}")
-if not os.getenv('GOOGLE_API_KEY'):
-    print("ERROR: GOOGLE_API_KEY not detected in environment.")
+print(f"API Key Loaded: {bool(os.getenv('GROQ_API_KEY'))}")
+if not os.getenv('GROQ_API_KEY'):
+    print("ERROR: GROQ_API_KEY not detected in environment.")
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles

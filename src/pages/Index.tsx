@@ -106,7 +106,7 @@ const Index = () => {
               </div>
               <h4 className="text-pure-black font-display text-lg font-semibold mb-2">Multimodal Ingestion</h4>
               <p className="text-pure-black/70 font-mono text-sm">
-                Powered by Gemini 1.5 Flash to comprehensively analyze complex visual and textual data.
+                Powered by Groq to comprehensively analyze complex visual and textual data.
               </p>
             </div>
             <div className="text-center">

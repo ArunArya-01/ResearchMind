@@ -1,17 +1,17 @@
 import asyncio
 import os
-from google import genai
+from groq import Groq
 from typing import Callable, Any, Awaitable
 
 
 class SwarmOrchestrator:
     def _select_best_model(self) -> str:
         # Primary target requested by product direction.
-        return 'gemini-2.5-flash-lite'
+        return 'openai/gpt-oss-120b'
 
     def __init__(self, log_callback: Callable[[str], Awaitable[Any]]):
       self.log_callback = log_callback
-      self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+      self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
       self.model_name = self._select_best_model()
       self.active_overrides = []
 
@@ -31,9 +31,9 @@ class SwarmOrchestrator:
     async def _safe_generate(self, prompt: str):
         model_candidates = [
             self.model_name,
-            "gemini-2.5-flash-lite",
-            "gemini-2.5-flash",
-            "models/gemini-2.5-flash-lite",
+            "llama-3.1-70b-versatile",
+            "mixtral-8x7b-32768",
+            "llama3-70b-8192",
         ]
         
         # Max 3 outer retries for 429/503
@@ -42,7 +42,7 @@ class SwarmOrchestrator:
                 last_error = None
                 for model_name in model_candidates:
                     try:
-                        response = await self.client.aio.models.generate_content(model=model_name, contents=prompt)
+                        response = await asyncio.to_thread(self.client.chat.completions.create, model=model_name, messages=[{"role": "user", "content": prompt}])
                         # Persist the working alias
                         self.model_name = model_name
                         return response
@@ -53,7 +53,7 @@ class SwarmOrchestrator:
                         if "not found" in msg or "not supported" in msg or "503" in msg or "unavailable" in msg or "overloaded" in msg:
                             continue
                         raise e
-                raise last_error if last_error else RuntimeError("No valid Gemini model available.")
+                raise last_error if last_error else RuntimeError("No valid Groq model available.")
             except Exception as e:
                 msg = str(e).lower()
                 if ('429' in msg or 'resourceexhausted' in msg or '503' in msg or 'unavailable' in msg) and attempt < 2:
@@ -76,7 +76,7 @@ If they are completely unrelated (e.g., Blockchain theory and Diamond prices), y
 Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, or "[FUSION_TERMINATED]" if they are unrelated.
 """
         response = await self._safe_generate(gate_prompt)
-        return response.candidates[0].content.parts[0].text.strip()
+        return response.choices[0].message.content.strip()
 
     async def run_swarm(self, discovery_gap_data: dict, topic: str, dataset_summary: str = None):
         print("DEBUG: Alpha Agent starting...")
@@ -135,7 +135,7 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             
             # Run blocking API call in executor (or just await if using async client, but generic genai SDK is sync by default)
             alpha_response = await self._safe_generate(alpha_prompt)
-            hypothesis = alpha_response.candidates[0].content.parts[0].text.strip()
+            hypothesis = alpha_response.choices[0].message.content.strip()
             full_transcript.append(f"Visionary: {hypothesis}")
             
             await self.log("Visionary", f"Proposed Hypothesis:\n{hypothesis}\n")
@@ -184,7 +184,7 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             Be direct and analytical.
             """
             beta_response = await self._safe_generate(beta_prompt)
-            critique = beta_response.candidates[0].content.parts[0].text.strip()
+            critique = beta_response.choices[0].message.content.strip()
             full_transcript.append(f"Skeptic: {critique}")
             
             await self.log("Skeptic", f"Critique Findings (3 Flaws):\n{critique}\n")
@@ -193,7 +193,7 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         await self.log("System", "Verifying novelty via DuckDuckGo Live Search...")
         novelty_context = ""
         try:
-            from duckduckgo_search import DDGS
+            from ddgs import DDGS
             results = DDGS().text(f"'{hypothesis}' research", max_results=3)
             novelty_context = "\\n".join([r.get('body', '') for r in results])
             await self.log("System", f"Found live context for novelty verification.")
@@ -286,10 +286,10 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         
         # Generation calls
         discovery_response = await self._safe_generate(discovery_prompt)
-        discovery_report = discovery_response.candidates[0].content.parts[0].text.strip()
+        discovery_report = discovery_response.choices[0].message.content.strip()
         
         synthesis_response = await self._safe_generate(synthesis_prompt)
-        raw_report = synthesis_response.candidates[0].content.parts[0].text.strip()
+        raw_report = synthesis_response.choices[0].message.content.strip()
         
         # Isolate and parse the JSON block
         import re, json, math
