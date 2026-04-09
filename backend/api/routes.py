@@ -104,14 +104,18 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         await websocket.send_json({"agent": "System", "message": "Neural Swarm Initialized..."})
-        
+
         active_orchestrator = None
-        
+        last_ping = asyncio.get_event_loop().time()
+
         async def run_swarm_task(topic, text_context, dataset_summary):
             nonlocal active_orchestrator
             async def log_adapter(msg_str: str):
-                await manager.broadcast(json.loads(msg_str))
-                
+                try:
+                    await manager.broadcast(json.loads(msg_str))
+                except Exception as e:
+                    print(f"Broadcast error: {e}")
+
             active_orchestrator = SwarmOrchestrator(log_callback=log_adapter)
             try:
                 report_data = await active_orchestrator.run_swarm(discovery_gap_data={"context": text_context}, topic=topic, dataset_summary=dataset_summary)
@@ -136,29 +140,72 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
             finally:
                 active_orchestrator = None
 
+        # Heartbeat monitoring
+        async def heartbeat_monitor():
+            while True:
+                await asyncio.sleep(60)  # Check every minute
+                current_time = asyncio.get_event_loop().time()
+                if current_time - last_ping > 120:  # 2 minutes timeout
+                    print("WebSocket heartbeat timeout, disconnecting")
+                    await websocket.close()
+                    break
+
+        heartbeat_task = asyncio.create_task(heartbeat_monitor())
+
         while True:
-            data = await websocket.receive_text()
-            msg = json.loads(data)
-            
-            if msg.get("type") == "start":
-                topic = msg.get("topic", "the provided research document")
-                dataset_summary = msg.get("dataset_summary", "")
-                text_context = PROCESSED_DATA.get("text", "")
-                
-                if not text_context and not dataset_summary:
-                    await websocket.send_json({"agent": "System", "message": "Please upload a file or dataset first."})
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=120.0)
+                msg = json.loads(data)
+
+                if msg.get("type") == "ping":
+                    last_ping = asyncio.get_event_loop().time()
+                    await websocket.send_json({"type": "pong"})
                     continue
-                
-                # Mount the swarm engine fully asynchronously in the background
-                asyncio.create_task(run_swarm_task(topic, text_context, dataset_summary))
-                
-            elif msg.get("type") == "director_override":
-                cmd = msg.get("command", "")
-                if active_orchestrator and cmd:
-                    active_orchestrator.inject_override(cmd)
+
+                if msg.get("type") == "start":
+                    topic = msg.get("topic", "the provided research document")
+                    dataset_summary = msg.get("dataset_summary", "")
+                    text_context = PROCESSED_DATA.get("text", "")
+
+                    if not text_context and not dataset_summary:
+                        await websocket.send_json({"agent": "System", "message": "Please upload a file or dataset first."})
+                        continue
+
+                    # Check if another task is already running
+                    if active_orchestrator:
+                        await websocket.send_json({"agent": "System", "message": "Swarm debate already in progress. Please wait for completion."})
+                        continue
+
+                    # Mount the swarm engine fully asynchronously in the background
+                    asyncio.create_task(run_swarm_task(topic, text_context, dataset_summary))
+
+                elif msg.get("type") == "director_override":
+                    cmd = msg.get("command", "")
+                    if active_orchestrator and cmd:
+                        active_orchestrator.inject_override(cmd)
+                    else:
+                        await websocket.send_json({"agent": "System", "message": "No active swarm session to override."})
+
+            except asyncio.TimeoutError:
+                print("WebSocket receive timeout")
+                await websocket.close()
+                break
+            except json.JSONDecodeError:
+                await websocket.send_json({"agent": "System", "message": "Invalid message format."})
+            except Exception as e:
+                print(f"WebSocket message handling error: {e}")
+                await websocket.send_json({"agent": "System", "message": "Internal server error processing message."})
+
+        heartbeat_task.cancel()
 
     except WebSocketDisconnect:
+        print("WebSocket disconnected")
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
         manager.disconnect(websocket)
+        if 'heartbeat_task' in locals():
+            heartbeat_task.cancel()
 
 @router.post("/upload/pdf")
 async def upload_pdf(files: List[UploadFile] = File(...)):
@@ -235,8 +282,6 @@ async def upload_pdf(files: List[UploadFile] = File(...)):
         }
     }
 
-class PDFRequest(BaseModel):
-    markdown_content: str
 
 @router.post("/upload-dataset")
 async def upload_dataset(files: List[UploadFile] = File(...)):
@@ -254,6 +299,9 @@ async def upload_dataset(files: List[UploadFile] = File(...)):
             
     return {"status": "success", "summary": "\\n\\n".join(summaries)}
 
+class PDFRequest(BaseModel):
+    markdown_content: str
+
 @router.post("/download/discovery-report")
 async def generate_discovery_report(req: PDFRequest):
     return Response(
@@ -261,106 +309,3 @@ async def generate_discovery_report(req: PDFRequest):
         media_type="text/markdown",
         headers={"Content-Disposition": "attachment; filename=Discovery_Report.md"}
     )
-
-
-@router.post("/download/ieee-pdf")
-async def generate_ieee_pdf(req: PDFRequest):
-    try:
-        # STEP 1: GHOSTWRITE THE ACADEMIC PAPER
-        client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-        prompt = f"""
-        You are a PhD-level academic ghostwriter. 
-        I will provide you with a raw 'Discovery Report' containing a hypothesis generated by an AI Swarm.
-        
-        Your task: Write a highly formal, strictly formatted academic research paper based on the Swarm's findings. Ensure the content is novel, deeply technical, and avoids generic filler.
-        
-        You MUST format the output EXACTLY like this using Markdown:
-        
-        # [Insert a highly academic, professional Title]
-        
-        **Abstract**—[Write a 200-word comprehensive abstract summarizing the problem, proposed methodology, and expected impact. Start exactly with the bold word 'Abstract' followed by an em-dash.]
-        
-        ## I. INTRODUCTION
-        [Write the introduction...]
-        
-        ## II. PROBLEM STATEMENT
-        [Detail the core problem and limitations of current approaches...]
-        
-        ## III. OBJECTIVES
-        [List the primary objectives of this proposed research...]
-        
-        ## IV. LITERATURE REVIEW
-        [Synthesize a theoretical background based on the domains discussed in the report...]
-        
-        ## V. METHODOLOGY
-        [Detail the theoretical or empirical methodology proposed to test the hypothesis...]
-        
-        ## VI. IMPLEMENTATION
-        [Describe the technical architecture, algorithms, or physical setup required...]
-        
-        ## VII. CONCLUSION
-        [Summarize the findings and future scope...]
-        
-        ## VIII. REFERENCES
-        [Generate 3 to 5 plausible, highly relevant academic references formatted strictly in IEEE citation style (e.g., [1] A. Smith, "Title", Journal, Year.)]
-        
-        Here is the raw Discovery Report to base the paper on:
-        {req.markdown_content}
-        """
-        
-        response = await client.aio.models.generate_content(model='gemini-2.5-flash', contents=prompt)
-        academic_paper_text = response.text
-        
-        # STEP 2: FORMAT INTO 2-COLUMN IEEE PDF
-        buffer = io.BytesIO()
-        doc = BaseDocTemplate(buffer, pagesize=letter, leftMargin=0.75*inch, rightMargin=0.75*inch, topMargin=0.75*inch, bottomMargin=0.75*inch)
-        frameWidth = (doc.width / 2.0) - 0.125*inch
-        left_frame = Frame(doc.leftMargin, doc.bottomMargin, frameWidth, doc.height, id='left')
-        right_frame = Frame(doc.leftMargin + frameWidth + 0.25*inch, doc.bottomMargin, frameWidth, doc.height, id='right')
-        doc.addPageTemplates([PageTemplate(id='TwoCol', frames=[left_frame, right_frame])])
-
-        # --- REPORTLAB STYLING ---
-        styles = getSampleStyleSheet()
-        title_style = ParagraphStyle('IEEETitle', parent=styles['Normal'], fontName='Times-Bold', fontSize=16, leading=20, spaceAfter=24, alignment=1) # Centered, large
-        abstract_style = ParagraphStyle('IEEEAbstract', parent=styles['Normal'], fontName='Times-BoldItalic', fontSize=9, leading=11, spaceAfter=14, alignment=4, leftIndent=0.1*inch, rightIndent=0.1*inch)
-        h1_style = ParagraphStyle('IEEEH1', parent=styles['Normal'], fontName='Times-Bold', fontSize=10, leading=12, spaceBefore=12, spaceAfter=6, alignment=1, textTransform='uppercase')
-        body_style = ParagraphStyle('IEEEBody', parent=styles['Normal'], fontName='Times-Roman', fontSize=10, leading=12, spaceAfter=8, alignment=4, firstLineIndent=0.15*inch)
-        ref_style = ParagraphStyle('IEEERef', parent=styles['Normal'], fontName='Times-Roman', fontSize=9, leading=11, spaceAfter=4, alignment=4)
-
-        story = []
-        lines = academic_paper_text.split('\n')
-        
-        # --- REPORTLAB PARSING ---
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-                
-            # Convert bold text for ReportLab
-            clean_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', line)
-            
-            if clean_line.startswith('# '):
-                story.append(Paragraph(clean_line.replace('# ', ''), title_style))
-            elif clean_line.startswith('<b>Abstract</b>') or clean_line.startswith('**Abstract**'):
-                story.append(Paragraph(clean_line, abstract_style))
-            elif clean_line.startswith('## '):
-                story.append(Paragraph(clean_line.replace('## ', ''), h1_style))
-            elif clean_line.startswith('[') and ']' in clean_line[:5]: 
-                # Catch references like [1], [2]
-                story.append(Paragraph(clean_line, ref_style))
-            elif clean_line.startswith('- ') or clean_line.startswith('* '):
-                story.append(Paragraph(clean_line, body_style))
-            elif not clean_line.startswith('```') and not clean_line.startswith('graph'):
-                story.append(Paragraph(clean_line, body_style))
-
-        doc.build(story)
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
-
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=IEEE_Manuscript.pdf"}
-        )
-    except Exception as e:
-        return JSONResponse(content={"status": "error", "message": str(e)}, status_code=500)

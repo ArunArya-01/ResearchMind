@@ -51,7 +51,6 @@ const SynthesisLab = () => {
   const [skepticLogs, setSkepticLogs] = useState<{ time: string; msg: string }[]>([{ time: "T+0.00s", msg: "System Ready" }]);
   const [overrideCommand, setOverrideCommand] = useState("");
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
-  const [ieeeManuscript, setIeeeManuscript] = useState<string | null>(null);
   const [gammaScore, setGammaScore] = useState<number | null>(null);
   const [hasActiveScan, setHasActiveScan] = useState(false);
   const [isDebating, setIsDebating] = useState(false);
@@ -216,13 +215,22 @@ const SynthesisLab = () => {
 
     const wsBases = resolveApiBaseCandidates().map(toWsBase);
     const tried = new Set<string>();
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 3;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
 
-    const connectWs = (index: number) => {
+    const connectWs = (index: number, isReconnect = false) => {
       const wsBase = wsBases[index];
       if (!wsBase || tried.has(wsBase)) {
+        if (isReconnect && reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          console.log(`Reconnection attempt ${reconnectAttempts}/${maxReconnectAttempts}`);
+          reconnectTimeout = setTimeout(() => connectWs(0, true), 2000 * reconnectAttempts);
+          return;
+        }
         setIsDebating(false);
-        setVisionaryLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Unable to connect to swarm backend." }]);
-        setSkepticLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Unable to connect to swarm backend." }]);
+        setVisionaryLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Unable to connect to swarm backend after multiple attempts." }]);
+        setSkepticLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Unable to connect to swarm backend after multiple attempts." }]);
         return;
       }
       tried.add(wsBase);
@@ -230,77 +238,106 @@ const SynthesisLab = () => {
       const ws = new WebSocket(`${wsBase}/ws/swarm`);
       socketRef.current = ws;
       let opened = false;
+      let pingInterval: NodeJS.Timeout | null = null;
 
       ws.onopen = () => {
         opened = true;
+        reconnectAttempts = 0; // Reset on successful connection
         localStorage.setItem("active_api_base", wsBase.replace(/^ws/i, "http"));
         console.log("WebSocket connection opened");
         ws.send(startPayload);
+
+        // Start heartbeat ping every 30 seconds
+        pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 30000);
       };
 
       ws.onmessage = (event) => {
-      console.log("WebSocket message received:", event.data);
-      try {
-        const data = JSON.parse(event.data);
-        console.log("Parsed WebSocket data:", data);
-        if (data.type === 'final_report') {
-          const rawScore = data.gamma_score ?? 0;
-          setFinalReportContent(data.discovery_report || data.content || data.message);
-          setIeeeManuscript(data.ieee_manuscript || "");
-          setGammaScore(rawScore);
-          
-          try {
-              const currentFileName = localStorage.getItem("pdf_title") || "Untitled Research";
-              const saved = JSON.parse(localStorage.getItem('processedPapers') || '[]');
-              saved.push({ id: Date.now(), title: currentFileName, score: rawScore, date: new Date().toLocaleDateString(), status: 'Analyzed' });
-              localStorage.setItem('processedPapers', JSON.stringify(saved));
-          } catch(e) {
-            // Ignore localStorage errors
+        console.log("WebSocket message received:", event.data);
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'pong') {
+            // Heartbeat response, ignore
+            return;
           }
-          
-          setIsDebating(false);
-          return;
-        }
-        const logEntry = {
-          time: `T+${(performance.now() / 1000).toFixed(2)}s`,
-          msg: data.message || data.content || ""
-        };
-        if (data.agent === "Visionary") {
-          setVisionaryLogs(prev => [...prev, logEntry]);
-        } else if (data.agent === "Skeptic") {
-          const msgUpper = (data.message || data.content || "").toUpperCase();
-          if (msgUpper.includes("CONTRADICT") || msgUpper.includes("CONFLICT") || msgUpper.includes("WEAKNESS") || msgUpper.includes("SAFETY")) {
-             pdfKeywords.forEach(kw => {
-                if (msgUpper.includes(kw.toUpperCase())) {
-                   setConflictingKeywords(prev => Array.from(new Set([...prev, kw])));
-                }
-             });
-          }
-          setSkepticLogs(prev => [...prev, logEntry]);
-        } else if (data.agent === "System" && logEntry.msg) {
-          setVisionaryLogs(prev => [...prev, { ...logEntry, msg: `[SYSTEM] ${logEntry.msg}` }]);
-          setSkepticLogs(prev => [...prev, { ...logEntry, msg: `[SYSTEM] ${logEntry.msg}` }]);
-          const msgLower = logEntry.msg.toLowerCase();
-          if (msgLower.includes("please upload a file first") || msgLower.includes("fusion terminated") || msgLower.includes("error")) {
+          console.log("Parsed WebSocket data:", data);
+          if (data.type === 'final_report') {
+            const rawScore = data.gamma_score ?? 0;
+            setFinalReportContent(data.discovery_report || data.content || data.message);
+            setGammaScore(rawScore);
+
+            try {
+                const currentFileName = localStorage.getItem("pdf_title") || "Untitled Research";
+                const saved = JSON.parse(localStorage.getItem('processedPapers') || '[]');
+                saved.push({ id: Date.now(), title: currentFileName, score: rawScore, date: new Date().toLocaleDateString(), status: 'Analyzed' });
+                localStorage.setItem('processedPapers', JSON.stringify(saved));
+            } catch(e) {
+              // Ignore localStorage errors
+            }
+
             setIsDebating(false);
+            return;
           }
+          const logEntry = {
+            time: `T+${(performance.now() / 1000).toFixed(2)}s`,
+            msg: data.message || data.content || ""
+          };
+          if (data.agent === "Visionary") {
+            setVisionaryLogs(prev => [...prev, logEntry]);
+          } else if (data.agent === "Skeptic") {
+            const msgUpper = (data.message || data.content || "").toUpperCase();
+            if (msgUpper.includes("CONTRADICT") || msgUpper.includes("CONFLICT") || msgUpper.includes("WEAKNESS") || msgUpper.includes("SAFETY")) {
+               pdfKeywords.forEach(kw => {
+                  if (msgUpper.includes(kw.toUpperCase())) {
+                     setConflictingKeywords(prev => Array.from(new Set([...prev, kw])));
+                  }
+               });
+            }
+            setSkepticLogs(prev => [...prev, logEntry]);
+          } else if (data.agent === "System" && logEntry.msg) {
+            setVisionaryLogs(prev => [...prev, { ...logEntry, msg: `[SYSTEM] ${logEntry.msg}` }]);
+            setSkepticLogs(prev => [...prev, { ...logEntry, msg: `[SYSTEM] ${logEntry.msg}` }]);
+            const msgLower = logEntry.msg.toLowerCase();
+            if (msgLower.includes("please upload a file first") || msgLower.includes("fusion terminated") || msgLower.includes("error")) {
+              setIsDebating(false);
+            }
+          }
+        } catch (e) {
+          console.error("WebSocket message parse error", e);
         }
-      } catch (e) {
-        console.error("WebSocket message parse error", e);
-      }
       };
-      
+
       ws.onclose = (event) => {
         console.log("WebSocket connection closed", event);
+        if (pingInterval) {
+          clearInterval(pingInterval);
+        }
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
         if (!opened) {
-          connectWs(index + 1);
+          connectWs(index + 1, isReconnect);
           return;
         }
-        if (!finalReportContent) {
-          setIsDebating(false);
+        if (!finalReportContent && !isReconnect) {
+          // Attempt reconnection if not already reconnecting and debate is ongoing
+          reconnectAttempts++;
+          if (reconnectAttempts <= maxReconnectAttempts) {
+            console.log(`Connection lost, attempting reconnection ${reconnectAttempts}/${maxReconnectAttempts}`);
+            setVisionaryLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Connection lost, attempting to reconnect..." }]);
+            setSkepticLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Connection lost, attempting to reconnect..." }]);
+            reconnectTimeout = setTimeout(() => connectWs(0, true), 2000);
+          } else {
+            setIsDebating(false);
+            setVisionaryLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Connection lost, giving up after multiple attempts." }]);
+            setSkepticLogs(prev => [...prev, { time: `T+${(performance.now() / 1000).toFixed(2)}s`, msg: "[SYSTEM] Connection lost, giving up after multiple attempts." }]);
+          }
         }
       };
-      
+
       ws.onerror = (error) => {
         console.log("WebSocket error", error);
         if (!opened) {
@@ -319,25 +356,6 @@ const SynthesisLab = () => {
     return "text-cyan-400 stroke-cyan-400";
   };
 
-  const downloadIEEE = async () => {
-      if (!ieeeManuscript) return;
-      try {
-          const activeApiBase = localStorage.getItem("active_api_base") || "http://localhost:8000";
-          const response = await fetch(`${activeApiBase}/download/ieee-pdf`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ markdown_content: ieeeManuscript })
-          });
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = "IEEE_Synthesis_Report.pdf";
-          a.click();
-      } catch (error) {
-          console.error("Error generating PDF:", error);
-      }
-  };
 
   const downloadDiscoveryReport = async () => {
       if (!finalReportContent) return;
@@ -715,17 +733,11 @@ const SynthesisLab = () => {
             
             {/* Inject this button below the final report output: */}
             <div className="mt-6 flex flex-col sm:flex-row gap-4 relative z-10 w-full">
-              <button 
-                  onClick={downloadDiscoveryReport} 
+              <button
+                  onClick={downloadDiscoveryReport}
                   className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-cyan-400"
               >
                   📄 Download Discovery Report
-              </button>
-              <button 
-                  onClick={downloadIEEE} 
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-indigo-400"
-              >
-                  🎓 Download IEEE Manuscript
               </button>
             </div>
           </FloatingPanel>
