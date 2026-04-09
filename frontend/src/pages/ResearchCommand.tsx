@@ -4,8 +4,16 @@ import ParallaxContainer from "../components/ParallaxContainer";
 import RadialGauge from "../components/RadialGauge";
 import { BookOpen } from "lucide-react";
 
+interface Paper {
+  id: number;
+  title: string;
+  score?: number;
+  date: string;
+  status: string;
+}
+
 const ResearchCommand = () => {
-  const [papers, setPapers] = useState<any[]>([]);
+  const [papers, setPapers] = useState<Paper[]>([]);
 
   useEffect(() => {
     try {

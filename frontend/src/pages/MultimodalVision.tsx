@@ -31,9 +31,18 @@ const postWithFallback = async (path: string, init?: RequestInit) => {
   throw lastNetworkError ?? new Error("All API candidates failed");
 };
 
+interface BoundingBox {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  type: string;
+  label: string;
+}
+
 const MultimodalVision = () => {
   const [extractedText, setExtractedText] = useState<string>("");
-  const [currentBoxes, setCurrentBoxes] = useState<any[]>([]);
+  const [currentBoxes, setCurrentBoxes] = useState<BoundingBox[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);

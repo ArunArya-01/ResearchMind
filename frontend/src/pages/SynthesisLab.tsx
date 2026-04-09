@@ -3,6 +3,11 @@ import FloatingPanel from "../components/FloatingPanel";
 import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw, Terminal } from "lucide-react";
 import { motion } from "framer-motion";
 
+interface PdfImage {
+  keyword: string;
+  citation_img: string;
+}
+
 const resolveApiBaseCandidates = () => {
   const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
   const storedBase =
@@ -52,7 +57,7 @@ const SynthesisLab = () => {
   const [isDebating, setIsDebating] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
   const [pdfDocs, setPdfDocs] = useState<Record<string, string[]>>({});
-  const [pdfImages, setPdfImages] = useState<any[]>([]);
+  const [pdfImages, setPdfImages] = useState<PdfImage[]>([]);
   const [conflictingKeywords, setConflictingKeywords] = useState<string[]>([]);
   const [hoveredNode, setHoveredNode] = useState<{keyword: string, imgPath: string} | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -249,7 +254,9 @@ const SynthesisLab = () => {
               const saved = JSON.parse(localStorage.getItem('processedPapers') || '[]');
               saved.push({ id: Date.now(), title: currentFileName, score: rawScore, date: new Date().toLocaleDateString(), status: 'Analyzed' });
               localStorage.setItem('processedPapers', JSON.stringify(saved));
-          } catch(e) {}
+          } catch(e) {
+            // Ignore localStorage errors
+          }
           
           setIsDebating(false);
           return;
@@ -492,7 +499,7 @@ const SynthesisLab = () => {
                       fill={nodeFill}
                       style={{ cursor: 'pointer', pointerEvents: 'auto' }}
                       className={`cursor-pointer overflow-visible hover:fill-bone/50 ${nodeClass}`}
-                      onMouseEnter={(e: any) => {
+                      onMouseEnter={(e: React.MouseEvent<SVGCircleElement>) => {
                         const target = e.target as SVGCircleElement;
                         target.setAttribute("r", (targetR * 1.5).toString());
                         
@@ -506,7 +513,7 @@ const SynthesisLab = () => {
                            }
                         }
                       }}
-                      onMouseLeave={(e: any) => {
+                      onMouseLeave={(e: React.MouseEvent<SVGCircleElement>) => {
                         const target = e.target as SVGCircleElement;
                         target.setAttribute("r", targetR.toString());
                         setHoveredNode(null);
