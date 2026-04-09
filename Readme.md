@@ -81,7 +81,7 @@ Start the Python worker on port `8001`:
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-In a second terminal, start the Go API gateway on port `8000`:
+In a second terminal, start the Go API gateway on port `8000 or 8001`:
 ```bash
 cd backend/go
 go mod tidy
