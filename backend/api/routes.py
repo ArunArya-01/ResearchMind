@@ -7,9 +7,16 @@ from pydantic import BaseModel
 from google import genai
 import os
 from typing import List
-from tools.pdf_parser import parse_pdf
-from agents.swarm import SwarmOrchestrator
-from tools.ieee_builder import build_ieee_pdf
+try:
+    # Works when running from backend/ (api as top-level package)
+    from tools.pdf_parser import parse_pdf
+    from agents.swarm import SwarmOrchestrator
+    from tools.ieee_builder import build_ieee_pdf
+except ModuleNotFoundError:
+    # Works when running from repo root (backend as top-level package)
+    from backend.tools.pdf_parser import parse_pdf
+    from backend.agents.swarm import SwarmOrchestrator
+    from backend.tools.ieee_builder import build_ieee_pdf
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle

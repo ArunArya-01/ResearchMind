@@ -11,7 +11,12 @@ from fastapi.staticfiles import StaticFiles
 
 os.makedirs("data/crops", exist_ok=True)
 
-from api.routes import router
+try:
+    # Works when running from backend/ with: uvicorn api.main:app
+    from api.routes import router
+except ModuleNotFoundError:
+    # Works when running from repo root with: uvicorn backend.api.main:app
+    from backend.api.routes import router
 
 app = FastAPI(
     title="ResearchMind Backend",
