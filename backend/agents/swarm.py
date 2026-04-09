@@ -107,6 +107,11 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         hypothesis = ""
         critique = ""
         full_transcript = []
+
+        await self.log(
+            "System",
+            f"Input mode: {scenario}. Debate will stream as claim, evidence, reasoning summary, and critique.",
+        )
         
         for iteration in range(1, 3):
             await self.log("System", f"Starting Iteration {iteration}/2")
@@ -130,7 +135,16 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             
             Formulate a bold, innovative hypothesis.
             If there was a previous critique, address those flaws in your new hypothesis.
-            Keep it concise but impactful.
+
+            Return a clean public debate turn with these labels:
+            CLAIM:
+            EVIDENCE USED:
+            REASONING SUMMARY:
+            RESEARCH HYPOTHESIS:
+            OPEN GAP:
+
+            Keep it concise but impactful. Do not reveal hidden chain-of-thought; the
+            REASONING SUMMARY must be a short evidence-backed explanation.
             """
             
             # Run blocking API call in executor (or just await if using async client, but generic genai SDK is sync by default)
@@ -173,6 +187,9 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             You are Agent Beta, the Skeptic.
             Hypothesis:
             {hypothesis}
+
+            Empirical Dataset Summary (CSV):
+            {dataset_summary if dataset_summary else 'None'}
             
             Retrieved Cross-Reference Data from Vector Database:
             {vector_context}
@@ -181,7 +198,17 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             Perform a stark 'Red-Team' critique. PRIORITIZE FINDING SAFETY GAPS.
             Identify exactly 3 specific safety flaws, weaknesses, or unsupported claims.
             Explicitly query and cross-reference the vector database chunks provided. Compare claims from Document A against Document B to find contradictions.
-            Be direct and analytical.
+
+            Return a clean public debate turn with these labels:
+            CHALLENGE:
+            EVIDENCE CHECK:
+            REASONING SUMMARY:
+            THREE FLAWS:
+            RESEARCH GAP:
+
+            Be direct and analytical. Do not reveal hidden chain-of-thought; the
+            REASONING SUMMARY must be a concise explanation grounded in the provided
+            PDF text, vector context, and/or CSV summary.
             """
             beta_response = await self._safe_generate(beta_prompt)
             critique = beta_response.choices[0].message.content.strip()
@@ -282,6 +309,12 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         [Evaluate the hypothesis against the DuckDuckGo live search context to assess true novelty in the field.]
         ## 5. Architectural Flow
         [Create a Mermaid.js diagram representing the system architecture or hypothesis flow inside a ```mermaid ... ``` block. Use graph TD; syntax.]
+        ## 6. Research Hypotheses
+        [List 3-5 specific, testable research hypotheses. For each one, include the measurable prediction and the PDF passage, dataset field, or observed summary that motivated it.]
+        ## 7. Research Gaps
+        [List the most important unsolved gaps discovered by the agents. Separate PDF-derived gaps, dataset-derived gaps, and validation gaps. If an input type was not supplied, state that clearly.]
+
+        Throughout the report, expose only clean public reasoning summaries. Do not reveal hidden chain-of-thought.
         """
         
         # Generation calls

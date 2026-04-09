@@ -53,6 +53,7 @@ const SynthesisLab = () => {
   const [finalReportContent, setFinalReportContent] = useState<string | null>(null);
   const [gammaScore, setGammaScore] = useState<number | null>(null);
   const [hasActiveScan, setHasActiveScan] = useState(false);
+  const [hasDataset, setHasDataset] = useState(false);
   const [isDebating, setIsDebating] = useState(false);
   const [pdfKeywords, setPdfKeywords] = useState<string[]>([]);
   const [pdfDocs, setPdfDocs] = useState<Record<string, string[]>>({});
@@ -84,6 +85,7 @@ const SynthesisLab = () => {
       if (currentUploadTime) {
         lastUploadTimeRef.current = currentUploadTime;
       }
+      setHasDataset(Boolean(localStorage.getItem("dataset_summary")));
     } catch (e) {
       console.error(e);
     }
@@ -158,6 +160,9 @@ const SynthesisLab = () => {
       }
 
       try {
+        const datasetSummary = localStorage.getItem("dataset_summary") || "";
+        setHasDataset(Boolean(datasetSummary));
+
         const activeStr = localStorage.getItem("active_keywords");
         if (activeStr) {
           const parsed = JSON.parse(activeStr);
@@ -168,6 +173,9 @@ const SynthesisLab = () => {
             setPdfKeywords([]);
             setHasActiveScan(false);
           }
+        } else {
+          setPdfKeywords([]);
+          setHasActiveScan(false);
         }
         const activeDocsStr = localStorage.getItem("active_docs");
         if (activeDocsStr) {
@@ -192,8 +200,11 @@ const SynthesisLab = () => {
   }, [fetchNodes]);
 
   const handleStartDiscovery = useCallback(() => {
-    if (!hasActiveScan) {
-      alert("Please upload a manuscript first.");
+    const datasetSummary = localStorage.getItem("dataset_summary") || "";
+    const hasAnyDiscoveryInput = hasActiveScan || Boolean(datasetSummary);
+
+    if (!hasAnyDiscoveryInput) {
+      alert("Please upload a PDF manuscript or CSV dataset first.");
       return;
     }
 
@@ -201,16 +212,17 @@ const SynthesisLab = () => {
     setTimeout(() => setZoomedIn(false), 4000);
 
     setIsDebating(true);
-    setVisionaryLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
-    setSkepticLogs([{ time: "T+0.00s", msg: "Analyzing..." }]);
+    const inputMode = hasActiveScan && datasetSummary ? "PDF + dataset" : hasActiveScan ? "PDF" : "dataset";
+    setVisionaryLogs([{ time: "T+0.00s", msg: `Analyzing ${inputMode} input...` }]);
+    setSkepticLogs([{ time: "T+0.00s", msg: `Checking ${inputMode} evidence...` }]);
     setFinalReportContent(null);
     setGammaScore(null);
     setConflictingKeywords([]);
 
     const startPayload = JSON.stringify({
       type: "start",
-      topic: "the uploaded research document",
-      dataset_summary: localStorage.getItem("dataset_summary") || ""
+      topic: hasActiveScan ? "the uploaded research document" : "the uploaded dataset",
+      dataset_summary: datasetSummary
     });
 
     const wsBases = resolveApiBaseCandidates().map(toWsBase);
@@ -377,6 +389,9 @@ const SynthesisLab = () => {
       }
   };
 
+  const hasDiscoveryInput = hasActiveScan || hasDataset;
+  const discoveryInputLabel = hasActiveScan && hasDataset ? "PDF + Dataset ready" : hasActiveScan ? "PDF ready" : hasDataset ? "Dataset ready" : "Awaiting PDF or dataset";
+
   return (
     <div className="min-h-screen bg-obsidian pt-24 px-6 pb-12">
       <div className="max-w-7xl mx-auto">
@@ -387,10 +402,11 @@ const SynthesisLab = () => {
           <p className="text-bone/40 font-mono text-sm mb-6">
             Knowledge graph · Swarm debate · Final manuscript
           </p>
+          <p className="text-bone/50 font-mono text-xs mb-4">{discoveryInputLabel}</p>
           <button
             onClick={handleStartDiscovery}
-            disabled={!hasActiveScan}
-            className={`px-6 py-3 rounded-xl font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-all duration-300 ${hasActiveScan ? "bg-crimson text-white shadow-[0_0_15px_hsl(354_96%_43%_/_0.4)] hover:shadow-[0_0_30px_hsl(354_96%_43%_/_0.8)] hover:-translate-y-0.5" : "bg-obsidian border border-crimson/30 text-crimson/50 cursor-not-allowed"}`}
+            disabled={!hasDiscoveryInput}
+            className={`px-6 py-3 rounded-xl font-display font-semibold text-sm flex items-center gap-2 mx-auto transition-all duration-300 ${hasDiscoveryInput ? "bg-crimson text-white shadow-[0_0_15px_hsl(354_96%_43%_/_0.4)] hover:shadow-[0_0_30px_hsl(354_96%_43%_/_0.8)] hover:-translate-y-0.5" : "bg-obsidian border border-crimson/30 text-crimson/50 cursor-not-allowed"}`}
           >
             <Play className="w-4 h-4" />
             Start Discovery
