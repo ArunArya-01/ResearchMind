@@ -35,7 +35,7 @@ Together, they debate iteratively until a cohesive, battle-tested scientific pat
 
 | Feature | Description |
 | :--- | :--- |
-| **Multimodal Ingestion** | Powered by Groq to comprehensively analyze complex visual and textual data. |
+| **Multimodal Ingestion** | Powered by Gemini to comprehensively analyze complex visual and textual data. |
 | **3D Knowledge Graph** | An interactive, real-time 3D constellation of 200+ research nodes mapping out relationships. |
 | **Discovery Gaps** | Visually highlights structural disconnected areas in research as pulsing red anomalies. |
 | **Synthesis Report** | Automatically generates beautifully formatted final research proposals from the Swarm's debate. |
@@ -53,7 +53,7 @@ Together, they debate iteratively until a cohesive, battle-tested scientific pat
 - **Go (net/http + goroutines):** High-performance API gateway and concurrency-heavy service layer.
 - **Python (FastAPI):** AI worker layer for PDF parsing and swarm reasoning.
 - **WebSockets (Go proxy + Python worker):** Real-time streaming for adversarial swarm debate.
-- **Groq:** Core reasoning and multimodal vision engine.
+- **Gemini:** Core reasoning and multimodal vision engine.
 - **NetworkX:** Graph logic and structural relationship mapping.
 
 ---
