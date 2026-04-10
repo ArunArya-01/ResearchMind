@@ -408,26 +408,53 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         {override_text_final}
 
         Generate a comprehensive Discovery Report in Markdown.
-        It MUST contain the following sections exactly:
-        # Discovery Report
-        ## 1. Core Hypothesis
-        [Explain the hypothesis clearly and concisely.]
-        ## 2. Empirical Grounding & Data Tables
-        [Analyze and present the CSV math/dataset summary. Output a markdown table summarizing the data. If no CSV text is provided, state that empirical data was not supplied.]
-        ## 3. Swarm Debate Summary
-        [Logically summarize the core arguments between the Visionary and Skeptic based on the transcript to show the resolution of flaws. Structure it as a debate format (e.g. Vision Agent: ... Skeptic Agent: ...)]
-        ## 4. Novelty Verification
-        [Evaluate the hypothesis against the DuckDuckGo live search context to assess true novelty in the field.]
-        ## 5. Architectural Flow
-        [Create a Mermaid.js diagram representing the system architecture or hypothesis flow inside a ```mermaid ... ``` block. Use graph TD; syntax.]
-        ## 6. Research Hypotheses
-        [List 3-5 specific, testable research hypotheses derived from the datasets and PDF content. For each one, include the measurable prediction and the PDF passage, dataset field, or observed summary that motivated it.]
-        ## 7. Problem Statement
-        [Generate a clear, concise problem statement derived directly from the given datasets and research context. Focus on the core issue that the hypothesis addresses.]
-        ## 8. Research Gaps
-        [List the most important unsolved gaps discovered by the agents. Separate PDF-derived gaps, dataset-derived gaps, and validation gaps. If an input type was not supplied, state that clearly.]
+        It MUST contain the following sections exactly in this order:
 
-        Throughout the report, expose only clean public reasoning summaries. Do not reveal hidden chain-of-thought.
+        # Discovery Report
+
+        ## Problem Statement
+        [Generate a clear, concise problem statement derived directly from the given datasets and research context. Focus on the core issue that the hypothesis addresses. This should be 2-3 dense paragraphs explaining the fundamental problem.]
+
+        ## Core Hypothesis
+        [Explain the hypothesis clearly and concisely in 2-3 paragraphs. Make it bold and specific.]
+
+        ## Research Hypotheses
+        [List 3-5 specific, testable research hypotheses derived from the datasets and PDF content. Format each as:
+        - **Hypothesis 1:** [Clear statement with measurable prediction] — Motivated by: [PDF passage, dataset field, or observed summary]
+        - **Hypothesis 2:** [Clear statement with measurable prediction] — Motivated by: [source]
+        - **Hypothesis 3:** [Clear statement with measurable prediction] — Motivated by: [source]
+        ]
+
+        ## Empirical Grounding & Data Tables
+        [Analyze and present the CSV math/dataset summary. Output a markdown table summarizing key statistics from the data. If no CSV text is provided, state that empirical data was not supplied.]
+
+        ## Swarm Debate Summary
+        [Logically summarize the core arguments between the Visionary and Skeptic based on the transcript. Structure it as a debate format:
+
+        **Visionary Agent:** [Present the visionary's main argument and hypothesis proposal]
+
+        **Skeptic Agent:** [Present the skeptic's key challenges and identified flaws]
+
+        **Resolution:** [Explain how the debate refined the hypothesis and addressed the identified weaknesses]
+        ]
+
+        ## Novelty Verification
+        [Evaluate the hypothesis against the DuckDuckGo live search context to assess true novelty in the field. Explain what makes this approach unique.]
+
+        ## Architectural Flow
+        [Describe the system architecture or hypothesis flow in clear prose. Optionally include a Mermaid.js diagram inside a ```mermaid ... ``` block using graph TD; syntax, but ensure the text description is complete on its own.]
+
+        ## Research Gaps
+        [List the most important unsolved gaps discovered by the agents. Organize as:
+
+        **PDF-Derived Gaps:** [List gaps identified from the research document]
+
+        **Dataset-Derived Gaps:** [List gaps identified from the data analysis]
+
+        **Validation Gaps:** [List gaps that require future experimental validation]
+        ]
+
+        Throughout the report, expose only clean public reasoning summaries. Do not reveal hidden chain-of-thought. Write in a professional, academic tone suitable for research documentation.
         """
         
         # Generate Debate Graph Data

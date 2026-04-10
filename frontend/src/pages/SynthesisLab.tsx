@@ -383,19 +383,74 @@ const SynthesisLab = () => {
       if (!finalReportContent) return;
       try {
           const activeApiBase = localStorage.getItem("active_api_base") || "http://localhost:8000";
-          const response = await fetch(`${activeApiBase}/download/discovery-report`, {
+          console.log("Sending PDF request with content length:", finalReportContent.length);
+
+          const response = await fetch(`${activeApiBase}/download/discovery-pdf`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ markdown_content: finalReportContent })
           });
+
+          console.log("Response status:", response.status);
+          console.log("Response headers content-type:", response.headers.get('content-type'));
+
+          // Check if response is OK
+          if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(errorData.error || `HTTP error ${response.status}`);
+          }
+
+          // Verify content type is PDF
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/pdf')) {
+              const text = await response.text();
+              console.error('Unexpected content type:', contentType);
+              console.error('Response body:', text);
+              throw new Error('Server returned non-PDF response');
+          }
+
           const blob = await response.blob();
+          console.log('PDF Blob size:', blob.size, 'bytes');
+          console.log('PDF Blob type:', blob.type);
+
+          // Check if blob is empty
+          if (blob.size === 0) {
+              throw new Error('Generated PDF is empty');
+          }
+
+          // Method 1: Try standard Blob URL download
           const url = window.URL.createObjectURL(blob);
+          console.log('Download URL created:', url);
+
           const a = document.createElement('a');
           a.href = url;
-          a.download = "Discovery_Report.md";
-          a.click();
+          a.download = "Discovery_Report.pdf";
+          a.style.display = 'none';
+          document.body.appendChild(a);
+
+          // Use click with small delay to ensure proper handling
+          setTimeout(() => {
+              try {
+                  a.click();
+                  console.log('PDF download triggered via click');
+              } catch (e) {
+                  console.error('Click failed, trying alternative method', e);
+                  // Fallback: Use window.location
+                  window.location.href = url;
+              }
+          }, 100);
+
+          // Clean up after a delay
+          setTimeout(() => {
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+              console.log('Download URL cleaned up');
+          }, 1000);
+
+          console.log('PDF download initiated');
       } catch (error) {
-          console.error("Error generating Discovery Report:", error);
+          console.error("Error generating Discovery Report PDF:", error);
+          alert(`Failed to download PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
   };
 
@@ -766,13 +821,27 @@ const SynthesisLab = () => {
               <div className="whitespace-pre-wrap">{finalReportContent}</div>
             </div>
             
-            {/* Inject this button below the final report output: */}
+            {/* Download buttons below the final report output: */}
             <div className="mt-6 flex flex-col sm:flex-row gap-4 relative z-10 w-full">
               <button
                   onClick={downloadDiscoveryReport}
-                  className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-cyan-400"
+                  className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-cyan-400 transition-all hover:shadow-[0_0_20px_hsl(180_100%_50%_/_0.4)]"
               >
-                  📄 Download Discovery Report
+                  Download PDF Report
+              </button>
+              <button
+                  onClick={() => {
+                      const blob = new Blob([finalReportContent], { type: 'text/markdown' });
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = "Discovery_Report.md";
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                  }}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-slate-500 transition-all"
+              >
+                  Download Markdown
               </button>
             </div>
           </FloatingPanel>

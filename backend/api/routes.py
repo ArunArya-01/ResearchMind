@@ -11,11 +11,13 @@ try:
     from tools.pdf_parser import parse_pdf
     from agents.swarm import SwarmOrchestrator
     from tools.ieee_builder import build_ieee_pdf
+    from tools.discovery_pdf_builder import build_discovery_pdf
 except ModuleNotFoundError:
     # Works when running from repo root (backend as top-level package)
     from backend.tools.pdf_parser import parse_pdf
     from backend.agents.swarm import SwarmOrchestrator
     from backend.tools.ieee_builder import build_ieee_pdf
+    from backend.tools.discovery_pdf_builder import build_discovery_pdf
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -313,3 +315,59 @@ async def generate_discovery_report(req: PDFRequest):
         media_type="text/markdown",
         headers={"Content-Disposition": "attachment; filename=Discovery_Report.md"}
     )
+
+@router.post("/download/discovery-pdf")
+async def generate_discovery_pdf(req: PDFRequest):
+    """Generate a well-formatted PDF from discovery report markdown"""
+    try:
+        if not req.markdown_content or len(req.markdown_content.strip()) == 0:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "No markdown content provided"}
+            )
+
+        print(f"PDF request received, content length: {len(req.markdown_content)} chars")
+
+        pdf_bytes = build_discovery_pdf(req.markdown_content)
+
+        if not pdf_bytes or len(pdf_bytes) == 0:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "PDF generation produced empty output"}
+            )
+
+        # Validate PDF header
+        if not pdf_bytes.startswith(b'%PDF'):
+            print(f"ERROR: Invalid PDF header! First 20 bytes: {pdf_bytes[:20]}")
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Generated PDF has invalid format"}
+            )
+
+        # DEBUG: Save PDF locally for inspection
+        import os
+        import time
+        debug_dir = os.path.join(os.getcwd(), 'pdf_debug')
+        os.makedirs(debug_dir, exist_ok=True)
+        debug_path = os.path.join(debug_dir, f'discovery_{int(time.time() * 1000)}.pdf')
+        with open(debug_path, 'wb') as f:
+            f.write(pdf_bytes)
+        print(f"✓ PDF generated and saved: {debug_path} ({len(pdf_bytes)} bytes)")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": 'attachment; filename="Discovery_Report.pdf"',
+                "Content-Length": str(len(pdf_bytes)),
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        )
+    except Exception as e:
+        print(f"✗ PDF generation error: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to generate PDF: {str(e)}"}
+        )
