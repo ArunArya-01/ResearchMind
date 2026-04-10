@@ -176,15 +176,20 @@ class SwarmOrchestrator:
                 raise e
 
     async def check_data_alignment(self, pdf_content: str, csv_summary: str) -> str:
-        gate_prompt = f"""You are a strict Data Science Gatekeeper.
+        gate_prompt = f"""CRITICAL DIRECTIVE: You are a ruthless peer reviewer.
+If the uploaded Dataset (CSV) and Theory (PDF), OR the two Theories (PDFs) belong to fundamentally different domains (e.g., Diamond Prices vs. Blockchain, or Breast Cancer vs. Quantum Computing) and share NO direct, scientifically proven causal variables, you MUST output EXACTLY:
+[FUSION_TERMINATED]: Domains are fundamentally incompatible.
+Do not attempt to find a creative metaphor. Terminate immediately.
+
+You are a strict Data Science Gatekeeper.
 Evaluate this theoretical paper and this dataset:
 Theory: {pdf_content[:2000]}
 Dataset Columns & Summary: {csv_summary[:2000]}
 
-Can this specific dataset legitimately benchmark, test, or prove this specific theory? Is there a strong, logical causal link? 
-If they are completely unrelated (e.g., Blockchain theory and Diamond prices), you must block it to prevent spurious correlation.
+Can this specific dataset legitimately benchmark, test, or prove this specific theory? Is there a strong, logical causal link?
+If there is ANY doubt about a direct, scientifically proven causal link, treat them as incompatible and terminate.
 
-Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, or "[FUSION_TERMINATED]" if they are unrelated.
+Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, or "[FUSION_TERMINATED]: Domains are fundamentally incompatible." if they are unrelated.
 """
         response = await self._safe_generate(gate_prompt)
         return response.strip()
@@ -200,7 +205,9 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         if has_pdf and not has_csv:
             scenario = "Theorist (PDF-only)"
         elif not has_pdf and has_csv:
+            # CSV-only: bypass Gatekeeper entirely — no PDF to compare against
             scenario = "Data Scientist (CSV-only)"
+            await self.log("System", "[FUSION_APPROVED] - Proceeding with standalone Data Profiling.")
         elif has_pdf and has_csv:
             scenario = "Breakthrough (Hybrid)"
             
@@ -234,7 +241,25 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             if self.active_overrides:
                 override_text_alpha = f"\n\n<[ CRITICAL DIRECTOR COMMAND DIRECTIVE: IMPERATIVE OVERRIDE ]>\n" + "\n".join(self.active_overrides) + "\n</[ CRITICAL DIRECTOR COMMAND DIRECTIVE ]>\n"
                 self.active_overrides = []
-            
+
+            # --- THE 96% ACCURACY ALPHA PROMPT UPDATE ---
+            grounding_directive = ""
+
+            if scenario == "Theorist (PDF-only)":
+                grounding_directive = """
+                CRITICAL GROUNDING RULE:
+                1. Identify a REAL, specific limitation explicitly mentioned in the text.
+                2. Propose a strictly scientific breakthrough to solve that exact limitation.
+                3. DO NOT invent science fiction concepts.
+                """
+            elif scenario == "Data Scientist (CSV-only)":
+                grounding_directive = """
+                CRITICAL GROUNDING RULE: You are performing pure Exploratory Data Analysis (EDA).
+                1. Because no theoretical PDF was provided, DO NOT invent medical, biological, or physical theories.
+                2. DO NOT treat basic data cleaning steps (like removing an 'id' column) as scientific hypotheses.
+                3. Focus ONLY on identifying statistically significant patterns: Which features are likely highly correlated? Which features have extreme outliers? Propose a hypothesis based STRICTLY on the statistical distributions of the provided data.
+                """
+
             alpha_prompt = f"""
             You are Agent Alpha, the Visionary.
             Scenario: {scenario}
@@ -242,8 +267,9 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             Discovery Gap Data (PDF): {context}
             Empirical Dataset Summary (CSV): {dataset_summary if dataset_summary else 'None'}
             Previous Critique: {critique}
+            {grounding_directive}
             {override_text_alpha}
-            
+
             Formulate a bold, innovative hypothesis.
             If there was a previous critique, address those flaws in your new hypothesis.
 
@@ -327,13 +353,18 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             
             await self.log("Skeptic", f"Critique Findings (3 Flaws):\n{critique}\n")
 
-        # DuckDuckGo Novelty Verification
+        # --- ACADEMIC SEARCH PATCH ---
         await self.log("System", "Verifying novelty via DuckDuckGo Live Search...")
         novelty_context = ""
         try:
-            from ddgs import DDGS
-            results = DDGS().text(f"'{hypothesis}' research", max_results=3)
-            novelty_context = "\\n".join([r.get('body', '') for r in results])
+            from duckduckgo_search import DDGS
+
+            # Use topic (clean string) + academic modifiers instead of the raw hypothesis blob.
+            # Raw hypothesis is multi-line structured text that confuses DDG and returns noisy results.
+            search_query = f"{topic} computer science research paper"
+
+            results = DDGS(timeout=10).text(search_query, max_results=3)
+            novelty_context = "\n".join([r.get('body', '') for r in results])
             await self.log("System", f"Found live context for novelty verification.")
         except Exception as e:
             print(f"DEBUG: DDG Search failed - {e}")
@@ -350,6 +381,22 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             
         synthesis_prompt = f"""
         You are the Master Synthesizer. Topic: {topic}. Hypothesis: {hypothesis}. Critique: {critique}. {override_text_final}
+
+        CRITICAL REASONING RULE: Read the Skeptic Agent's summary carefully.
+        IF the Skeptic Agent successfully proved that the Visionary's hypothesis is scientifically invalid, hallucinatory, or unsupported by the provided texts:
+        1. DO NOT write a research paper supporting the hypothesis.
+        2. Change the title of the report to "Discovery Terminated: Null Hypothesis."
+        3. Under "Core Hypothesis," explicitly state that the proposed synthesis was rejected due to lack of empirical grounding.
+        4. Focus the rest of the report entirely on the research gaps and WHY the current data/literature cannot support the Visionary's claims.
+        Only proceed to write a supporting IEEE paper if the Skeptic's critique was substantially addressed or partially refuted by the Visionary.
+
+        CRITICAL DATA FIDELITY RULE: Read the Skeptic's critique carefully.
+        If the Skeptic identifies that the Visionary's hypothesis relies on data modalities, file types, or external data sources (e.g., genomic data, live APIs, imaging data) that are NOT explicitly present in the provided CSV or PDF:
+        1. YOU MUST REJECT the Visionary's hypothesis.
+        2. Change the report title to "Discovery Terminated: Data-Deficient Hypothesis."
+        3. In the Core Hypothesis section, explicitly state: "The proposed hypothesis cannot be evaluated because it relies on [Missing Data Type] which is absent from the provided empirical datasets."
+        4. Do NOT generate an Architectural Flow or Novelty Verification section for a data-deficient hypothesis. Instead, list what data would be required to make the hypothesis testable.
+
         
         CRITICAL REQUIREMENT 0 (THE FEASIBILITY GATE):
         Before writing anything, evaluate if fusing these research documents makes logical, scientific sense. 
@@ -359,7 +406,7 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         2. Two short paragraphs explaining exactly why the AI agents determined these fields cannot be responsibly fused.
         3. The mandatory JSON block at the bottom with "G_severity" set to 10.0.
         
-        If (and ONLY if) the domains are compatible, proceed to CRITICAL REQUIREMENT 1.
+        If (and ONLY if) the domains are compatible AND the hypothesis survived Skeptic scrutiny, proceed to CRITICAL REQUIREMENT 1.
         
         CRITICAL REQUIREMENT 1: Format strictly mimicking an IEEE academic paper in Markdown. You MUST generate massive volume to reach a 6-page length. Write 2 to 3 dense paragraphs per section. DO NOT summarize. Expand deeply on theoretical mechanics.
         
@@ -390,6 +437,30 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         """
         
         discovery_prompt = f"""
+        CRITICAL DIRECTIVE: THE "KILL SWITCH" PROTOCOL
+        You are the Master Synthesizer. Your absolute highest priority is SCIENTIFIC INTEGRITY, not document completion. You are strictly forbidden from writing a research paper if the foundational data is flawed.
+
+        Step 1: Read the Skeptic Agent's summary immediately.
+        Step 2: Check for FATAL FLAWS. A fatal flaw exists if the Skeptic points out:
+          - DOMAIN MISMATCH: The uploaded files (e.g., two PDFs) are from fundamentally unrelated scientific fields (e.g., Oncology and Silicon Photonics) with no scientifically proven crossover.
+          - PHANTOM DATA: The Visionary's hypothesis relies on data (e.g., genomic profiles, DW-MRI) that does not actually exist in the provided CSV or PDFs.
+
+        IF A FATAL FLAW IS DETECTED:
+        You MUST abandon the standard report template. You are FORBIDDEN from generating a Mermaid diagram, Architectural Flow, or Novelty Verification. You must output EXACTLY and ONLY the following format:
+
+        # [FUSION TERMINATED]: Incompatible Contexts Detected
+
+        ## Error Diagnostics
+        [1-paragraph summary of why the two files cannot be merged, or what data is missing, based entirely on the Skeptic's critique.]
+
+        ## Skeptic Intercept
+        [Copy/paste the exact objection from the Skeptic Agent here.]
+
+        [END OF GENERATION]
+
+        Only if NO fatal flaw is detected, proceed with the standard Discovery Report below.
+        ---
+
         You are the Master Synthesizer. Scenario: {scenario}.
         Topic: {topic}.
 
