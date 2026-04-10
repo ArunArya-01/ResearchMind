@@ -1,10 +1,27 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+def _load_project_env() -> None:
+    # Load local cwd env first, then walk upward from this file to find repo-level .env
+    load_dotenv()
+    current = os.path.abspath(os.path.dirname(__file__))
+    for _ in range(4):
+        env_path = os.path.join(current, ".env")
+        if os.path.exists(env_path):
+            load_dotenv(dotenv_path=env_path, override=False)
+            break
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+
+_load_project_env()
 print(f"API Key Loaded: {bool(os.getenv('GROQ_API_KEY'))}")
+print(f"GOOGLE_API_KEY Loaded: {bool(os.getenv('GOOGLE_API_KEY'))}")
 if not os.getenv('GROQ_API_KEY'):
     print("ERROR: GROQ_API_KEY not detected in environment.")
+if not os.getenv('GOOGLE_API_KEY'):
+    print("ERROR: GOOGLE_API_KEY not detected in environment.")
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles

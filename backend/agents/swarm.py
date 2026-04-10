@@ -1,7 +1,21 @@
 import asyncio
 import os
-import google.generativeai as genai
+from pathlib import Path
 from typing import Callable, Any, Awaitable
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    load_dotenv = None
+
+_import_error = None
+try:
+    import google.genai as genai
+except ModuleNotFoundError:
+    try:
+        import google.generativeai as genai
+    except ModuleNotFoundError as exc:
+        genai = None
+        _import_error = exc
 
 
 class SwarmOrchestrator:
@@ -11,9 +25,79 @@ class SwarmOrchestrator:
 
     def __init__(self, log_callback: Callable[[str], Awaitable[Any]]):
       self.log_callback = log_callback
-      genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+      if genai is None:
+          raise RuntimeError(
+              "Google GenAI SDK not installed. Install `google-genai` (preferred) or `google-generativeai`."
+          ) from _import_error
+      self._load_project_env()
+      api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+      print(f"GOOGLE_API_KEY loaded: {bool(api_key)}")
+      if not api_key:
+          raise ValueError("GOOGLE_API_KEY not found in environment")
+
+      # Ensure downstream SDK calls can discover credentials via env as well.
+      os.environ["GOOGLE_API_KEY"] = api_key
+      os.environ.setdefault("GEMINI_API_KEY", api_key)
+
+      self._genai_client = None
+      if hasattr(genai, "configure"):
+          # Legacy SDK path (and harmless for mixed installations).
+          genai.configure(api_key=api_key)
+      # google-genai (new SDK) path
+      if hasattr(genai, "Client"):
+          self._genai_client = genai.Client(api_key=api_key)
+      else:
+          # If no Client exists, we rely on configure + GenerativeModel path.
+          if not hasattr(genai, "GenerativeModel"):
+              raise RuntimeError("Unsupported Google GenAI SDK import. Install `google-genai`.")
+
       self.model_name = self._select_best_model()
       self.active_overrides = []
+
+    def _load_project_env(self) -> None:
+        if load_dotenv:
+            load_dotenv()
+        for parent in Path(__file__).resolve().parents:
+            env_path = parent / ".env"
+            if env_path.exists():
+                if load_dotenv:
+                    load_dotenv(dotenv_path=env_path, override=False)
+                self._load_env_fallback(env_path)
+                break
+
+    def _load_env_fallback(self, env_path: Path) -> None:
+        try:
+            with env_path.open("r", encoding="utf-8") as f:
+                for raw_line in f:
+                    line = raw_line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip().strip('"').strip("'")
+                    if key and key not in os.environ:
+                        os.environ[key] = value
+        except Exception:
+            pass
+
+    async def _generate_text(self, model_name: str, prompt: str) -> str:
+        if self._genai_client:
+            response = await asyncio.to_thread(
+                self._genai_client.models.generate_content,
+                model=model_name,
+                contents=prompt,
+            )
+            text = getattr(response, "text", None)
+            if not text:
+                raise RuntimeError("Gemini returned an empty response.")
+            return text
+
+        model = genai.GenerativeModel(model_name)
+        response = await asyncio.to_thread(model.generate_content, prompt)
+        text = getattr(response, "text", None)
+        if not text:
+            raise RuntimeError("Gemini returned an empty response.")
+        return text
 
     def inject_override(self, command: str):
         self.active_overrides.append(command)
@@ -41,11 +125,10 @@ class SwarmOrchestrator:
                 last_error = None
                 for model_name in model_candidates:
                     try:
-                        model = genai.GenerativeModel(model_name)
-                        response = await asyncio.to_thread(model.generate_content, prompt)
+                        text = await self._generate_text(model_name, prompt)
                         # Persist the working alias
                         self.model_name = model_name
-                        return response
+                        return text
                     except Exception as e:
                         last_error = e
                         msg = str(e).lower()
@@ -76,7 +159,7 @@ If they are completely unrelated (e.g., Blockchain theory and Diamond prices), y
 Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, or "[FUSION_TERMINATED]" if they are unrelated.
 """
         response = await self._safe_generate(gate_prompt)
-        return response.text.strip()
+        return response.strip()
 
     async def run_swarm(self, discovery_gap_data: dict, topic: str, dataset_summary: str = None):
         print("DEBUG: Alpha Agent starting...")
@@ -149,7 +232,7 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             
             # Run blocking API call in executor (or just await if using async client, but generic genai SDK is sync by default)
             alpha_response = await self._safe_generate(alpha_prompt)
-            hypothesis = alpha_response.text.strip()
+            hypothesis = alpha_response.strip()
             full_transcript.append(f"Visionary: {hypothesis}")
             
             await self.log("Visionary", f"Proposed Hypothesis:\n{hypothesis}\n")
@@ -211,7 +294,7 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             PDF text, vector context, and/or CSV summary.
             """
             beta_response = await self._safe_generate(beta_prompt)
-            critique = beta_response.text.strip()
+            critique = beta_response.strip()
             full_transcript.append(f"Skeptic: {critique}")
             
             await self.log("Skeptic", f"Critique Findings (3 Flaws):\n{critique}\n")
@@ -319,10 +402,10 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         
         # Generation calls
         discovery_response = await self._safe_generate(discovery_prompt)
-        discovery_report = discovery_response.text.strip()
+        discovery_report = discovery_response.strip()
 
         synthesis_response = await self._safe_generate(synthesis_prompt)
-        raw_report = synthesis_response.text.strip()
+        raw_report = synthesis_response.strip()
         
         # Isolate and parse the JSON block
         import re, json, math

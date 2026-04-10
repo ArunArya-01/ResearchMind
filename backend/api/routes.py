@@ -4,7 +4,6 @@ import re
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, UploadFile, File, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import google.generativeai as genai
 import os
 from typing import List
 try:

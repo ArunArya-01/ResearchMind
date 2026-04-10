@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 PyMuPDF
-google-generativeai
+google-genai
 networkx
 websockets
 python-multipart
