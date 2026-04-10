@@ -115,8 +115,8 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
                 except Exception as e:
                     print(f"Broadcast error: {e}")
 
-            active_orchestrator = SwarmOrchestrator(log_callback=log_adapter)
             try:
+                active_orchestrator = SwarmOrchestrator(log_callback=log_adapter)
                 report_data = await active_orchestrator.run_swarm(discovery_gap_data={"context": text_context}, topic=topic, dataset_summary=dataset_summary)
                 await manager.broadcast({
                     "type": "final_report",
@@ -129,6 +129,7 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
                 })
             except Exception as e:
                 err_msg = str(e)
+                key_visible = bool(os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"))
                 if "[FUSION_TERMINATED]" in err_msg:
                     await manager.broadcast({
                         "status": "error",
@@ -136,7 +137,10 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
                         "message": "FUSION TERMINATED: Spurious correlation detected. The uploaded dataset lacks a scientific causal link to benchmark the provided theory."
                     })
                 else:
-                    await manager.broadcast({"agent": "System", "message": f"Swarm Generator Error: {err_msg}"})
+                    await manager.broadcast({
+                        "agent": "System",
+                        "message": f"Swarm Generator Error: {err_msg} | GOOGLE_API_KEY visible to process: {key_visible}"
+                    })
             finally:
                 active_orchestrator = None
 

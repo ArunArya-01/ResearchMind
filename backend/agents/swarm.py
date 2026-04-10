@@ -2,63 +2,68 @@ import asyncio
 import os
 from pathlib import Path
 from typing import Callable, Any, Awaitable
+
 try:
     from dotenv import load_dotenv
 except ModuleNotFoundError:
     load_dotenv = None
 
-_import_error = None
+_new_sdk_import_error = None
+_legacy_sdk_import_error = None
+
 try:
-    import google.genai as genai
-except ModuleNotFoundError:
-    try:
-        import google.generativeai as genai
-    except ModuleNotFoundError as exc:
-        genai = None
-        _import_error = exc
+    import google.genai as google_genai
+except ModuleNotFoundError as exc:
+    google_genai = None
+    _new_sdk_import_error = exc
+
+try:
+    import google.generativeai as legacy_genai
+except ModuleNotFoundError as exc:
+    legacy_genai = None
+    _legacy_sdk_import_error = exc
 
 
 class SwarmOrchestrator:
     def _select_best_model(self) -> str:
         # Primary target requested by product direction.
-        return 'gemini-1.5-flash'
+        return 'gemini-2.5-flash-lite'
 
     def __init__(self, log_callback: Callable[[str], Awaitable[Any]]):
         self.log_callback = log_callback
-        if genai is None:
+        if google_genai is None and legacy_genai is None:
             raise RuntimeError(
                 "Google GenAI SDK not installed. Install `google-genai` (preferred) or `google-generativeai`."
-            ) from _import_error
+            ) from (_new_sdk_import_error or _legacy_sdk_import_error)
         
         self._load_project_env()
         
-        # Safely fetch, strip whitespace, and remove accidental quotes from the API key
-        api_key = os.environ.get("GOOGLE_API_KEY", "").strip() or os.environ.get("GEMINI_API_KEY", "").strip()
+        # Use GOOGLE_API_KEY consistently for all Gemini auth paths.
+        api_key = os.environ.get("GOOGLE_API_KEY", "").strip()
         api_key = api_key.strip("'").strip('"')
         
         print(f"GOOGLE_API_KEY loaded: {bool(api_key)}")
         
-        # Catch blank keys or placeholder text before the SDK crashes
         if not api_key or api_key.startswith("<"):
             raise ValueError("Valid GOOGLE_API_KEY not found or is empty. Please set a real API key in your .env or environment variables.")
 
-        # Forcefully inject the clean key back into os.environ so deep SDK layers find it
+        # Force API-key auth mode and avoid accidental Vertex/ADC resolution.
+        os.environ.pop("GOOGLE_GENAI_USE_VERTEXAI", None)
+        os.environ.pop("GOOGLE_CLOUD_PROJECT", None)
+        os.environ.pop("GOOGLE_CLOUD_LOCATION", None)
+        os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
         os.environ["GOOGLE_API_KEY"] = api_key
         os.environ["GEMINI_API_KEY"] = api_key
 
+        self._api_key = api_key
         self._genai_client = None
-        
-        # google-generativeai (Legacy SDK) path
-        if hasattr(genai, "configure"):
-            genai.configure(api_key=api_key)
-            
-        # google-genai (New SDK) path
-        if hasattr(genai, "Client"):
-            self._genai_client = genai.Client(api_key=api_key)
-        else:
-            # If no Client exists, we rely on configure + GenerativeModel path.
-            if not hasattr(genai, "GenerativeModel"):
-                raise RuntimeError("Unsupported Google GenAI SDK import. Install `google-genai`.")
+        self._use_legacy_sdk = False
+
+        if google_genai is not None:
+            self._genai_client = google_genai.Client(api_key=self._api_key)
+        elif legacy_genai is not None:
+            legacy_genai.configure(api_key=self._api_key)
+            self._use_legacy_sdk = True
 
         self.model_name = self._select_best_model()
         self.active_overrides = []
@@ -112,7 +117,10 @@ class SwarmOrchestrator:
                 raise RuntimeError("Gemini returned an empty response.")
             return text
 
-        model = genai.GenerativeModel(model_name)
+        if not self._use_legacy_sdk or legacy_genai is None:
+            raise RuntimeError("Gemini client initialization failed before generation.")
+
+        model = legacy_genai.GenerativeModel(model_name)
         response = await asyncio.to_thread(model.generate_content, prompt)
         text = getattr(response, "text", None)
         if not text:
