@@ -124,7 +124,8 @@ async def websocket_swarm_endpoint(websocket: WebSocket):
                     "content": report_data.get("discovery_report", ""),
                     "discovery_report": report_data.get("discovery_report", ""),
                     "ieee_manuscript": report_data.get("ieee_manuscript", ""),
-                    "gamma_score": report_data.get("gamma_score", 0.0)
+                    "gamma_score": report_data.get("gamma_score", 0.0),
+                    "debate_graph_data": report_data.get("debate_graph_data", "{}")
                 })
             except Exception as e:
                 err_msg = str(e)

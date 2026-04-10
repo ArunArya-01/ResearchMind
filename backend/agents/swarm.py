@@ -24,44 +24,62 @@ class SwarmOrchestrator:
         return 'gemini-1.5-flash'
 
     def __init__(self, log_callback: Callable[[str], Awaitable[Any]]):
-      self.log_callback = log_callback
-      if genai is None:
-          raise RuntimeError(
-              "Google GenAI SDK not installed. Install `google-genai` (preferred) or `google-generativeai`."
-          ) from _import_error
-      self._load_project_env()
-      api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-      print(f"GOOGLE_API_KEY loaded: {bool(api_key)}")
-      if not api_key:
-          raise ValueError("GOOGLE_API_KEY not found in environment")
+        self.log_callback = log_callback
+        if genai is None:
+            raise RuntimeError(
+                "Google GenAI SDK not installed. Install `google-genai` (preferred) or `google-generativeai`."
+            ) from _import_error
+        
+        self._load_project_env()
+        
+        # Safely fetch, strip whitespace, and remove accidental quotes from the API key
+        api_key = os.environ.get("GOOGLE_API_KEY", "").strip() or os.environ.get("GEMINI_API_KEY", "").strip()
+        api_key = api_key.strip("'").strip('"')
+        
+        print(f"GOOGLE_API_KEY loaded: {bool(api_key)}")
+        
+        # Catch blank keys or placeholder text before the SDK crashes
+        if not api_key or api_key.startswith("<"):
+            raise ValueError("Valid GOOGLE_API_KEY not found or is empty. Please set a real API key in your .env or environment variables.")
 
-      # Ensure downstream SDK calls can discover credentials via env as well.
-      os.environ["GOOGLE_API_KEY"] = api_key
-      os.environ.setdefault("GEMINI_API_KEY", api_key)
+        # Forcefully inject the clean key back into os.environ so deep SDK layers find it
+        os.environ["GOOGLE_API_KEY"] = api_key
+        os.environ["GEMINI_API_KEY"] = api_key
 
-      self._genai_client = None
-      if hasattr(genai, "configure"):
-          # Legacy SDK path (and harmless for mixed installations).
-          genai.configure(api_key=api_key)
-      # google-genai (new SDK) path
-      if hasattr(genai, "Client"):
-          self._genai_client = genai.Client(api_key=api_key)
-      else:
-          # If no Client exists, we rely on configure + GenerativeModel path.
-          if not hasattr(genai, "GenerativeModel"):
-              raise RuntimeError("Unsupported Google GenAI SDK import. Install `google-genai`.")
+        self._genai_client = None
+        
+        # google-generativeai (Legacy SDK) path
+        if hasattr(genai, "configure"):
+            genai.configure(api_key=api_key)
+            
+        # google-genai (New SDK) path
+        if hasattr(genai, "Client"):
+            self._genai_client = genai.Client(api_key=api_key)
+        else:
+            # If no Client exists, we rely on configure + GenerativeModel path.
+            if not hasattr(genai, "GenerativeModel"):
+                raise RuntimeError("Unsupported Google GenAI SDK import. Install `google-genai`.")
 
-      self.model_name = self._select_best_model()
-      self.active_overrides = []
+        self.model_name = self._select_best_model()
+        self.active_overrides = []
 
     def _load_project_env(self) -> None:
-        if load_dotenv:
-            load_dotenv()
+        # Search current working directory and script directories
+        env_paths = [Path.cwd() / ".env", Path(__file__).resolve().parent / ".env"]
         for parent in Path(__file__).resolve().parents:
-            env_path = parent / ".env"
+            if parent / ".env" not in env_paths:
+                env_paths.append(parent / ".env")
+
+        # Specifically add repo root
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        if repo_root / ".env" not in env_paths:
+            env_paths.insert(0, repo_root / ".env")
+
+        for env_path in env_paths:
             if env_path.exists():
                 if load_dotenv:
-                    load_dotenv(dotenv_path=env_path, override=False)
+                    # override=True ensures .env wins if the user's terminal has an empty export
+                    load_dotenv(dotenv_path=env_path, override=True)
                 self._load_env_fallback(env_path)
                 break
 
@@ -75,7 +93,9 @@ class SwarmOrchestrator:
                     key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip().strip('"').strip("'")
-                    if key and key not in os.environ:
+                    
+                    # Apply to os.environ if missing or currently an empty string
+                    if key and (key not in os.environ or not os.environ[key].strip()):
                         os.environ[key] = value
         except Exception:
             pass
@@ -362,23 +382,23 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         """
         
         discovery_prompt = f"""
-        You are the Master Synthesizer. Scenario: {scenario}. 
-        Topic: {topic}. 
-        
-        Hypothesis: 
+        You are the Master Synthesizer. Scenario: {scenario}.
+        Topic: {topic}.
+
+        Hypothesis:
         {hypothesis}
-        
+
         Debate Transcript:
         {"\\n\\n".join(full_transcript)}
-        
+
         Empirical Math context (if any):
         {dataset_summary if dataset_summary else 'None'}
-        
+
         Novelty Verification Context (DDG):
         {novelty_context}
-        
+
         {override_text_final}
-        
+
         Generate a comprehensive Discovery Report in Markdown.
         It MUST contain the following sections exactly:
         # Discovery Report
@@ -393,13 +413,54 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         ## 5. Architectural Flow
         [Create a Mermaid.js diagram representing the system architecture or hypothesis flow inside a ```mermaid ... ``` block. Use graph TD; syntax.]
         ## 6. Research Hypotheses
-        [List 3-5 specific, testable research hypotheses. For each one, include the measurable prediction and the PDF passage, dataset field, or observed summary that motivated it.]
-        ## 7. Research Gaps
+        [List 3-5 specific, testable research hypotheses derived from the datasets and PDF content. For each one, include the measurable prediction and the PDF passage, dataset field, or observed summary that motivated it.]
+        ## 7. Problem Statement
+        [Generate a clear, concise problem statement derived directly from the given datasets and research context. Focus on the core issue that the hypothesis addresses.]
+        ## 8. Research Gaps
         [List the most important unsolved gaps discovered by the agents. Separate PDF-derived gaps, dataset-derived gaps, and validation gaps. If an input type was not supplied, state that clearly.]
 
         Throughout the report, expose only clean public reasoning summaries. Do not reveal hidden chain-of-thought.
         """
         
+        # Generate Debate Graph Data
+        debate_graph_prompt = f"""
+        Analyze the debate transcript and generate data for visualizing agent debate analysis.
+
+        Debate Transcript:
+        {"\\n\\n".join(full_transcript)}
+
+        Output JSON data with the following structure:
+        {{
+          "debate_turns": [
+            {{
+              "turn": 1,
+              "agent": "Visionary",
+              "confidence": 0.8,
+              "key_points": ["point1", "point2"],
+              "challenges_addressed": []
+            }},
+            {{
+              "turn": 2,
+              "agent": "Skeptic",
+              "confidence": 0.6,
+              "key_points": ["critique1", "critique2"],
+              "challenges_addressed": ["challenge1"]
+            }}
+          ],
+          "overall_metrics": {{
+            "total_turns": 2,
+            "visionary_strength": 0.8,
+            "skeptic_concerns": 0.6,
+            "resolution_score": 0.7
+          }}
+        }}
+
+        Assign realistic confidence scores (0.1-1.0) based on the strength of arguments.
+        """
+
+        debate_graph_response = await self._safe_generate(debate_graph_prompt)
+        debate_graph_data = debate_graph_response.strip()
+
         # Generation calls
         discovery_response = await self._safe_generate(discovery_prompt)
         discovery_report = discovery_response.strip()
@@ -438,5 +499,6 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         return {
             "discovery_report": discovery_report,
             "ieee_manuscript": ieee_report,
-            "gamma_score": gamma_score
+            "gamma_score": gamma_score,
+            "debate_graph_data": debate_graph_data
         }

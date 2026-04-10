@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import FloatingPanel from "../components/FloatingPanel";
+import DebateGraph from "../components/DebateGraph";
 import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw, Terminal } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -61,6 +62,7 @@ const SynthesisLab = () => {
   const [conflictingKeywords, setConflictingKeywords] = useState<string[]>([]);
   const [hoveredNode, setHoveredNode] = useState<{keyword: string, imgPath: string} | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [debateGraphData, setDebateGraphData] = useState<any>(null);
   const lastUploadTimeRef = useRef<string | null>(null);
   
   useEffect(() => {
@@ -217,6 +219,7 @@ const SynthesisLab = () => {
     setSkepticLogs([{ time: "T+0.00s", msg: `Checking ${inputMode} evidence...` }]);
     setFinalReportContent(null);
     setGammaScore(null);
+    setDebateGraphData(null);
     setConflictingKeywords([]);
 
     const startPayload = JSON.stringify({
@@ -280,6 +283,13 @@ const SynthesisLab = () => {
             const rawScore = data.gamma_score ?? 0;
             setFinalReportContent(data.discovery_report || data.content || data.message);
             setGammaScore(rawScore);
+            if (data.debate_graph_data) {
+              try {
+                setDebateGraphData(JSON.parse(data.debate_graph_data));
+              } catch (e) {
+                console.error("Failed to parse debate graph data", e);
+              }
+            }
 
             try {
                 const currentFileName = localStorage.getItem("pdf_title") || "Untitled Research";
@@ -674,6 +684,15 @@ const SynthesisLab = () => {
             </div>
           </FloatingPanel>
         </div>
+
+        {/* Debate Graph */}
+        {debateGraphData && (
+          <FloatingPanel z={50} className="mb-8 overflow-hidden border border-crimson">
+            <div className="p-4">
+              <DebateGraph data={debateGraphData} />
+            </div>
+          </FloatingPanel>
+        )}
 
         {/* DIRECTOR OVERRIDE PANEL */}
         <FloatingPanel z={40} className="w-full mb-8 !bg-transparent !border-0 !shadow-none">
