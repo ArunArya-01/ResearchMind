@@ -455,6 +455,52 @@ const SynthesisLab = () => {
       }
   };
 
+  const downloadFormattedReport = async (content: string) => {
+      if (!content) return;
+      try {
+          const activeApiBase = localStorage.getItem("active_api_base") || "http://localhost:8000";
+          console.log("Sending formatted report request with content length:", content.length);
+
+          const response = await fetch(`${activeApiBase}/download/discovery-formatted`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ markdown_content: content })
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(errorData.error || `HTTP error ${response.status}`);
+          }
+
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = "Discovery_Report.txt";
+          a.style.display = 'none';
+          document.body.appendChild(a);
+
+          setTimeout(() => {
+              try {
+                  a.click();
+                  console.log('Formatted text download triggered');
+              } catch (e) {
+                  console.error('Click failed', e);
+                  window.location.href = url;
+              }
+          }, 100);
+
+          setTimeout(() => {
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+          }, 1000);
+      } catch (error) {
+          console.error("Error downloading formatted report:", error);
+          alert(`Failed to download text: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+  };
+
   const hasDiscoveryInput = hasActiveScan || hasDataset;
   const discoveryInputLabel = hasActiveScan && hasDataset ? "PDF + Dataset ready" : hasActiveScan ? "PDF ready" : hasDataset ? "Dataset ready" : "Awaiting PDF or dataset";
 
@@ -783,15 +829,19 @@ const SynthesisLab = () => {
 
         {/* Final Manuscript */}
         {finalReportContent && (
-          <FloatingPanel z={60} dark={true} className="max-w-2xl mx-auto p-10 relative overflow-hidden border border-crimson min-h-[400px] overflow-y-auto max-h-[600px]">
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 relative z-10 border-b border-crimson/20 pb-6">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-bone/50" />
-                <span className="text-bone font-display font-semibold text-xl">Final Manuscript</span>
+          <FloatingPanel z={60} dark={true} className="max-w-4xl mx-auto relative overflow-hidden border border-crimson">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 p-8 relative z-10 border-b border-crimson/30 bg-slate-900/50">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6 text-crimson" />
+                <div>
+                  <span className="text-bone font-display font-bold text-2xl">Final Manuscript</span>
+                  <p className="text-bone/50 text-xs font-mono mt-1">Research Discovery Report</p>
+                </div>
               </div>
               
               {gammaScore !== null && (
-                <div className="flex items-center gap-4 bg-graphite p-3 rounded-xl border border-bone/20 shadow-lg shrink-0">
+                <div className="flex items-center gap-4 bg-graphite p-4 rounded-lg border border-bone/20 shadow-lg shrink-0">
                    <div className="relative w-16 h-16">
                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                            <circle cx="50" cy="50" r="40" className="stroke-bone/10" strokeWidth="8" fill="none" />
@@ -818,32 +868,112 @@ const SynthesisLab = () => {
               )}
             </div>
             
-            <div className="relative z-10 prose prose-sm max-w-none dark:prose-invert prose-headings:text-bone prose-p:text-bone/90 prose-strong:text-crimson">
-              <ReactMarkdown>{finalReportContent}</ReactMarkdown>
+            {/* Content Section */}
+            <div className="relative z-10 p-8 min-h-[400px] max-h-[600px] overflow-y-auto">
+              <div className="prose-clean max-w-none space-y-6">
+                <ReactMarkdown
+                  components={{
+                    h1: ({node, ...props}: any) => (
+                      <h1 className="text-4xl font-bold text-bone mb-3 pb-4 border-b-2 border-crimson/40 font-display" {...props} />
+                    ),
+                    h2: ({node, ...props}: any) => (
+                      <h2 className="text-2xl font-bold text-crimson mt-10 mb-4 pt-4 pb-3 border-l-4 border-l-crimson pl-4 font-display" {...props} />
+                    ),
+                    h3: ({node, ...props}: any) => (
+                      <h3 className="text-lg font-semibold text-bone/95 mt-8 mb-3 font-display" {...props} />
+                    ),
+                    h4: ({node, ...props}: any) => (
+                      <h4 className="text-base font-semibold text-bone mt-6 mb-2" {...props} />
+                    ),
+                    p: ({node, ...props}: any) => (
+                      <p className="text-bone/85 leading-8 mb-5 text-justify hyphens-auto" {...props} />
+                    ),
+                    ul: ({node, ...props}: any) => (
+                      <ul className="list-disc list-outside space-y-3 my-5 text-bone/85 ml-6" {...props} />
+                    ),
+                    ol: ({node, ...props}: any) => (
+                      <ol className="list-decimal list-outside space-y-3 my-5 text-bone/85 ml-6" {...props} />
+                    ),
+                    li: ({node, ...props}: any) => (
+                      <li className="text-bone/85 leading-7" {...props} />
+                    ),
+                    blockquote: ({node, ...props}: any) => (
+                      <blockquote className="border-l-4 border-crimson pl-5 py-3 text-bone/70 italic bg-slate-900/30 my-6 rounded-r" {...props} />
+                    ),
+                    code: ({node, inline, ...props}: any) => inline ? 
+                      <code className="text-sky-300 bg-slate-900/60 px-2.5 py-1 rounded font-mono text-sm font-semibold" {...props} /> :
+                      <code className="text-sky-300 bg-slate-900/60 px-3 py-1 rounded font-mono text-sm" {...props} />,
+                    pre: ({node, ...props}: any) => (
+                      <pre className="bg-slate-900/80 border border-slate-700/50 rounded-lg my-6 p-4 overflow-x-auto text-sky-300 font-mono text-sm leading-6" {...props} />
+                    ),
+                    a: ({node, ...props}: any) => (
+                      <a className="text-sky-400 hover:text-sky-300 underline decoration-sky-400/40 hover:decoration-sky-400 transition-colors" {...props} />
+                    ),
+                    strong: ({node, ...props}: any) => (
+                      <strong className="text-crimson font-bold" {...props} />
+                    ),
+                    em: ({node, ...props}: any) => (
+                      <em className="text-bone/75 italic" {...props} />
+                    ),
+                    hr: ({node, ...props}: any) => (
+                      <hr className="border-crimson/30 my-10" {...props} />
+                    ),
+                    table: ({node, ...props}: any) => (
+                      <div className="overflow-x-auto my-7 rounded-lg border border-slate-600/50 bg-slate-900/20">
+                        <table className="w-full border-collapse text-sm" {...props} />
+                      </div>
+                    ),
+                    thead: ({node, ...props}: any) => (
+                      <thead className="bg-slate-900/80 border-b border-slate-600" {...props} />
+                    ),
+                    th: ({node, ...props}: any) => (
+                      <th className="px-4 py-3 text-bone font-bold text-left border-r border-slate-600 last:border-r-0" {...props} />
+                    ),
+                    tbody: ({node, ...props}: any) => (
+                      <tbody className="divide-y divide-slate-700" {...props} />
+                    ),
+                    tr: ({node, children, index}: any) => (
+                      <tr className={(index && index % 2 === 0) ? "bg-slate-900/40" : "bg-slate-900/20"} {...{children}} />
+                    ),
+                    td: ({node, ...props}: any) => (
+                      <td className="px-4 py-3 text-bone/80 border-r border-slate-700/50 last:border-r-0" {...props} />
+                    ),
+                  }}>
+                  {finalReportContent}
+                </ReactMarkdown>
+              </div>
             </div>
             
-            {/* Download buttons below the final report output: */}
-            <div className="mt-6 flex flex-col sm:flex-row gap-4 relative z-10 w-full">
-              <button
-                  onClick={downloadDiscoveryReport}
-                  className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-cyan-400 transition-all hover:shadow-[0_0_20px_hsl(180_100%_50%_/_0.4)]"
-              >
-                  Download PDF Report
-              </button>
-              <button
-                  onClick={() => {
-                      const blob = new Blob([finalReportContent], { type: 'text/markdown' });
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = "Discovery_Report.md";
-                      a.click();
-                      window.URL.revokeObjectURL(url);
-                  }}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg border border-slate-500 transition-all"
-              >
-                  Download Markdown
-              </button>
+            {/* Download Buttons */}
+            <div className="p-8 border-t border-crimson/30 bg-slate-900/30 relative z-10">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                    onClick={downloadDiscoveryReport}
+                    className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 px-6 rounded-lg shadow-md border border-cyan-400/50 transition-all hover:shadow-[0_0_20px_hsl(180_100%_50%_/_0.4)]"
+                >
+                    Download PDF
+                </button>
+                <button
+                    onClick={() => {
+                        const blob = new Blob([finalReportContent], { type: 'text/markdown' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = "Discovery_Report.md";
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                    }}
+                    className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md border border-slate-500/50 transition-all"
+                >
+                    Download Markdown
+                </button>
+                <button
+                    onClick={() => downloadFormattedReport(finalReportContent)}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-6 rounded-lg shadow-md border border-emerald-400/50 transition-all hover:shadow-[0_0_20px_hsl(120_100%_50%_/_0.4)]"
+                >
+                    Download Clean Text
+                </button>
+              </div>
             </div>
           </FloatingPanel>
         )}

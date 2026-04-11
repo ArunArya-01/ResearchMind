@@ -357,7 +357,10 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
         await self.log("System", "Verifying novelty via DuckDuckGo Live Search...")
         novelty_context = ""
         try:
-            from duckduckgo_search import DDGS
+            try:
+                from ddgs import DDGS
+            except ImportError:
+                from duckduckgo_search import DDGS
 
             # Use topic (clean string) + academic modifiers instead of the raw hypothesis blob.
             # Raw hypothesis is multi-line structured text that confuses DDG and returns noisy results.
@@ -366,10 +369,14 @@ Reply ONLY with "[FUSION_APPROVED]" if the dataset is scientifically relevant, o
             results = DDGS(timeout=10).text(search_query, max_results=3)
             novelty_context = "\n".join([r.get('body', '') for r in results])
             await self.log("System", f"Found live context for novelty verification.")
-        except Exception as e:
-            print(f"DEBUG: DDG Search failed - {e}")
+        except ImportError as e:
+            print(f"DEBUG: DuckDuckGo Search import failed - {e}. Install with: pip install ddgs")
             novelty_context = "Could not reach DuckDuckGo for live verification."
-            await self.log("System", "DuckDuckGo Live Search failed.")
+            await self.log("System", "DuckDuckGo search module not installed. Install with: pip install ddgs")
+        except Exception as e:
+            print(f"DEBUG: DuckDuckGo Search failed - {e}")
+            novelty_context = "Could not reach DuckDuckGo for live verification."
+            await self.log("System", f"DuckDuckGo Live Search failed: {str(e)}")
 
         # Final Synthesis
         await self.log("System", "Generating Final Synthesis Reports...")

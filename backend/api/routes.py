@@ -12,12 +12,14 @@ try:
     from agents.swarm import SwarmOrchestrator
     from tools.ieee_builder import build_ieee_pdf
     from tools.discovery_pdf_builder import build_discovery_pdf
+    from tools.discovery_formatter import format_discovery_report
 except ModuleNotFoundError:
     # Works when running from repo root (backend as top-level package)
     from backend.tools.pdf_parser import parse_pdf
     from backend.agents.swarm import SwarmOrchestrator
     from backend.tools.ieee_builder import build_ieee_pdf
     from backend.tools.discovery_pdf_builder import build_discovery_pdf
+    from backend.tools.discovery_formatter import format_discovery_report
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -315,6 +317,35 @@ async def generate_discovery_report(req: PDFRequest):
         media_type="text/markdown",
         headers={"Content-Disposition": "attachment; filename=Discovery_Report.md"}
     )
+
+@router.post("/download/discovery-formatted")
+async def generate_discovery_formatted(req: PDFRequest):
+    """Generate a clean, formatted text version of the discovery report"""
+    try:
+        if not req.markdown_content or len(req.markdown_content.strip()) == 0:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "No markdown content provided"}
+            )
+
+        formatted_text = format_discovery_report(req.markdown_content)
+
+        return Response(
+            content=formatted_text.encode('utf-8'),
+            media_type="text/plain; charset=utf-8",
+            headers={
+                "Content-Disposition": 'attachment; filename="Discovery_Report.txt"',
+                "Content-Type": "text/plain; charset=utf-8"
+            }
+        )
+    except Exception as e:
+        print(f"✗ Formatting error: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to format report: {str(e)}"}
+        )
 
 @router.post("/download/discovery-pdf")
 async def generate_discovery_pdf(req: PDFRequest):

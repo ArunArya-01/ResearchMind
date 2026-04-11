@@ -162,10 +162,8 @@ def extract_sections_from_markdown(markdown_content: str) -> dict:
         "problem_statement":   "",
         "hypothesis":          "",
         "research_hypotheses": [],
-        "empirical_grounding": "",
         "debate_summary":      "",
         "novelty_verification":"",
-        "architectural_flow":  "",
         "research_gaps":       [],
     }
 
@@ -205,14 +203,10 @@ def _save_section(name: str, content_lines: list, sections: dict) -> None:
         sections["hypothesis"] = content
     elif "research hypothes" in nl:
         sections["research_hypotheses"] = _parse_list_items(content)
-    elif any(k in nl for k in ("empirical", "data", "grounding")):
-        sections["empirical_grounding"] = content
     elif any(k in nl for k in ("debate", "swarm")):
         sections["debate_summary"] = content
     elif "novelty" in nl:
         sections["novelty_verification"] = content
-    elif any(k in nl for k in ("architectural", "flow")):
-        sections["architectural_flow"] = content
     elif "gap" in nl:
         sections["research_gaps"] = _parse_list_items(content)
 
@@ -565,13 +559,7 @@ def build_discovery_pdf(markdown_content: str) -> bytes:
     if sections["research_hypotheses"]:
         story.append(safe_paragraph("Research Hypotheses", section_style))
         _add_numbered_cards(story, sections["research_hypotheses"], card_text_style, "Hypothesis")
-        story.append(Spacer(1, 0.06 * inch))
-
-    # --- Empirical Grounding ---
-    if sections["empirical_grounding"]:
-        story.append(safe_paragraph("Empirical Grounding", section_style))
-        _add_rich_blocks(story, sections["empirical_grounding"], body_style, bullet_style)
-        story.append(Spacer(1, 0.10 * inch))
+        story.append(Spacer(1, 0.12 * inch))
 
     # --- Swarm Debate Summary ---
     if sections["debate_summary"]:
@@ -594,23 +582,7 @@ def build_discovery_pdf(markdown_content: str) -> bytes:
     if sections["novelty_verification"]:
         story.append(safe_paragraph("Novelty Verification", section_style))
         _add_rich_blocks(story, sections["novelty_verification"], body_style, bullet_style)
-        story.append(Spacer(1, 0.10 * inch))
-
-    # --- Architectural Flow ---
-    if sections["architectural_flow"]:
-        story.append(safe_paragraph("Architectural Flow", section_style))
-        for line in _parse_mermaid_flow(sections["architectural_flow"]):
-            cleaned = clean_text(line)
-            if cleaned:
-                story.append(
-                    KeepTogether([
-                        _make_card(cleaned, flow_style,
-                                   colors.HexColor("#f8fafc"),
-                                   colors.HexColor("#cbd5e1")),
-                        Spacer(1, 0.07 * inch),
-                    ])
-                )
-        story.append(Spacer(1, 0.06 * inch))
+        story.append(Spacer(1, 0.12 * inch))
 
     # --- Research Gaps ---
     if sections["research_gaps"]:
