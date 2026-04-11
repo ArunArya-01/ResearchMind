@@ -101,20 +101,6 @@ ResearchMind/
 ├── requirements.txt     # Python dependencies
 └── Readme.md
 ```
-```text
-ResearchMind/
-├── backend/
-│   ├── agents/          # Swarm orchestration
-│   ├── api/             # FastAPI app and routes
-│   ├── go/              # Go API proxy/server
-│   └── tools/           # PDF parsing, graph logic, report builders
-├── core/
-│   └── ingestion/       # Additional ingestion pipeline modules
-├── frontend/            # React + Vite application
-├── data/                # Runtime upload/output storage
-├── requirements.txt     # Python dependencies
-└── Readme.md
-```
 
 ## How The System Flows
 
