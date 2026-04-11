@@ -3,6 +3,7 @@ import FloatingPanel from "../components/FloatingPanel";
 import DebateGraph from "../components/DebateGraph";
 import { Rocket, ShieldAlert, FileText, Play, Loader2, RefreshCw, Terminal } from "lucide-react";
 import { motion } from "framer-motion";
+import ReactMarkdown from 'react-markdown';
 
 interface PdfImage {
   keyword: string;
@@ -782,21 +783,21 @@ const SynthesisLab = () => {
 
         {/* Final Manuscript */}
         {finalReportContent && (
-          <FloatingPanel z={60} className="max-w-2xl mx-auto p-10 relative overflow-hidden border border-crimson min-h-[400px] overflow-y-auto max-h-[600px]">
+          <FloatingPanel z={60} dark={true} className="max-w-2xl mx-auto p-10 relative overflow-hidden border border-crimson min-h-[400px] overflow-y-auto max-h-[600px]">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 relative z-10 border-b border-crimson/20 pb-6">
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-pure-black/50" />
-                <span className="text-pure-black font-display font-semibold text-xl">Final Manuscript</span>
+                <FileText className="w-5 h-5 text-bone/50" />
+                <span className="text-bone font-display font-semibold text-xl">Final Manuscript</span>
               </div>
               
               {gammaScore !== null && (
-                <div className="flex items-center gap-4 bg-obsidian p-3 rounded-xl border border-bone/20 shadow-lg shrink-0">
+                <div className="flex items-center gap-4 bg-graphite p-3 rounded-xl border border-bone/20 shadow-lg shrink-0">
                    <div className="relative w-16 h-16">
                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                            <circle cx="50" cy="50" r="40" className="stroke-bone/10" strokeWidth="8" fill="none" />
-                           <motion.circle 
-                               cx="50" cy="50" r="40" 
-                               className={getGammaColor(gammaScore)} 
+                           <motion.circle
+                               cx="50" cy="50" r="40"
+                               className={getGammaColor(gammaScore)}
                                strokeWidth="8" fill="none" strokeLinecap="round"
                                initial={{ strokeDasharray: "251 251", strokeDashoffset: 251 }}
                                animate={{ strokeDashoffset: 251 - (251 * Math.min(gammaScore, 10)) / 10 }}
@@ -808,7 +809,7 @@ const SynthesisLab = () => {
                        </div>
                    </div>
                    <div>
-                       <p className="text-bone/50 font-mono text-[10px] tracking-wider uppercase mb-1">Criticality Index</p>
+                       <p className="text-bone/70 font-mono text-[10px] tracking-wider uppercase mb-1">Criticality Index</p>
                        <p className={`font-display font-bold text-sm tracking-wide ${getGammaColor(gammaScore).split(' ')[0]}`}>
                            {gammaScore > 7.5 ? "SEVERE RISK" : gammaScore > 4.0 ? "ELEVATED" : "NOMINAL"}
                        </p>
@@ -817,8 +818,8 @@ const SynthesisLab = () => {
               )}
             </div>
             
-            <div className="font-mono text-xs leading-relaxed text-pure-black/70 space-y-0.5 relative z-10">
-              <div className="whitespace-pre-wrap">{finalReportContent}</div>
+            <div className="relative z-10 prose prose-sm max-w-none dark:prose-invert prose-headings:text-bone prose-p:text-bone/90 prose-strong:text-crimson">
+              <ReactMarkdown>{finalReportContent}</ReactMarkdown>
             </div>
             
             {/* Download buttons below the final report output: */}
