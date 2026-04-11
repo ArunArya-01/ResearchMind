@@ -1,21 +1,13 @@
-"""
-Clean text formatter for Discovery Reports
-Converts markdown to beautifully formatted plain text with proper spacing
-"""
-
 import re
 from textwrap import fill, indent
 
 
-class DiscoveryReportFormatter:
-    """Format discovery report markdown into clean, readable text output."""
-    
+class DiscoveryReportFormatter: 
     def __init__(self, line_width: int = 80):
         self.line_width = line_width
         self.output_lines = []
     
     def format(self, markdown_content: str) -> str:
-        """Convert markdown content to formatted text."""
         self.output_lines = []
         
         lines = markdown_content.split('\n')
@@ -50,7 +42,6 @@ class DiscoveryReportFormatter:
         return '\n'.join(self.output_lines)
     
     def _flush_section(self, section_type: str, content: list) -> None:
-        """Process and add accumulated section content."""
         if not content or not section_type:
             return
         
@@ -62,7 +53,6 @@ class DiscoveryReportFormatter:
         self._process_content(text)
     
     def _process_content(self, text: str) -> None:
-        """Process and format content blocks."""
         blocks = self._split_blocks(text)
         
         for block_type, content in blocks:
@@ -78,7 +68,6 @@ class DiscoveryReportFormatter:
                 self._add_code_block(content)
     
     def _split_blocks(self, text: str) -> list:
-        """Split text into blocks (paragraphs, lists, tables, etc)."""
         blocks = []
         current_block = []
         current_type = None
@@ -157,7 +146,6 @@ class DiscoveryReportFormatter:
         return blocks
     
     def _add_title(self, text: str) -> None:
-        """Add main title with formatting."""
         self.output_lines.append('')
         self.output_lines.append('═' * self.line_width)
         self.output_lines.append(text.center(self.line_width))
@@ -165,7 +153,6 @@ class DiscoveryReportFormatter:
         self.output_lines.append('')
     
     def _add_section_header(self, text: str) -> None:
-        """Add section header with formatting."""
         self.output_lines.append('')
         self.output_lines.append('─' * self.line_width)
         self.output_lines.append(f'► {text.upper()}')
@@ -173,7 +160,6 @@ class DiscoveryReportFormatter:
         self.output_lines.append('')
     
     def _add_paragraph(self, text: str) -> None:
-        """Add wrapped paragraph with proper spacing."""
         # Clean up markdown formatting
         text = self._clean_markdown(text)
         
@@ -187,7 +173,6 @@ class DiscoveryReportFormatter:
         self.output_lines.append('')
     
     def _add_bullet(self, text: str) -> None:
-        """Add bullet point with proper formatting."""
         text = self._clean_markdown(text)
         lines = text.split('\n')
         
@@ -208,7 +193,6 @@ class DiscoveryReportFormatter:
         self.output_lines.append('')
     
     def _add_numbered_item(self, text: str) -> None:
-        """Add numbered item with proper formatting."""
         text = self._clean_markdown(text)
         lines = text.split('\n')
         
@@ -229,7 +213,6 @@ class DiscoveryReportFormatter:
         self.output_lines.append('')
     
     def _add_table(self, text: str) -> None:
-        """Add formatted table."""
         lines = [l.strip() for l in text.split('\n') if l.strip()]
         
         # Simple table formatting
@@ -243,7 +226,6 @@ class DiscoveryReportFormatter:
         self.output_lines.append('')
     
     def _add_code_block(self, text: str) -> None:
-        """Add code block with formatting."""
         lines = [l for l in text.split('\n') if l.strip() and not l.strip().startswith('```')]
         
         self.output_lines.append('')
@@ -254,7 +236,6 @@ class DiscoveryReportFormatter:
         self.output_lines.append('')
     
     def _clean_markdown(self, text: str) -> str:
-        """Remove markdown formatting."""
         # Bold
         text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
         text = re.sub(r'__(.+?)__', r'\1', text)
@@ -276,15 +257,6 @@ class DiscoveryReportFormatter:
 
 
 def format_discovery_report(markdown_content: str, line_width: int = 90) -> str:
-    """
-    Format a discovery report markdown content into clean, readable text.
-    
-    Args:
-        markdown_content: The markdown content of the discovery report
-        line_width: Width of output lines (default: 90)
-    
-    Returns:
-        Formatted text string suitable for console or file output
-    """
+
     formatter = DiscoveryReportFormatter(line_width=line_width)
     return formatter.format(markdown_content)

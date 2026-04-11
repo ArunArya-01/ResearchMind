@@ -17,13 +17,7 @@ from reportlab.platypus import (
     KeepTogether,
 )
 
-
-# ---------------------------------------------------------------------------
-# Text / Markdown helpers
-# ---------------------------------------------------------------------------
-
 def strip_markdown_fences(text: str, keep_mermaid: bool = False) -> str:
-    """Remove fenced code blocks, optionally preserving mermaid body content."""
     if not text:
         return ""
 
@@ -65,20 +59,7 @@ _ALLOWED_CLOSE = re.compile(r"</(b|i|u)>",          re.IGNORECASE)
 
 
 def clean_text(text: str) -> str:
-    """
-    Convert lightweight Markdown to safe ReportLab paragraph markup.
 
-    Strategy
-    --------
-    1. Strip code fences and normalise whitespace.
-    2. Remove links, ATX headings, block-quote markers.
-    3. Protect bold/italic spans with unique placeholders BEFORE html.escape().
-    4. Escape everything else (so stray < > & become &lt; &gt; &amp;).
-    5. Restore the placeholders as proper <b>/<i> tags.
-
-    This guarantees that no raw HTML tags from the original markdown can
-    survive into the ReportLab XML parser.
-    """
     if not text:
         return ""
 
@@ -150,7 +131,6 @@ def clean_text(text: str) -> str:
 
 
 def safe_paragraph(text: str, style, fallback: str = "") -> object:
-    """Create a Paragraph safely, stripping tags on parser errors."""
     candidate = (text or "").strip() or fallback.strip()
     if not candidate:
         return Spacer(1, 0.01 * inch)
@@ -169,11 +149,6 @@ def safe_paragraph(text: str, style, fallback: str = "") -> object:
             continue
 
     return Spacer(1, 0.01 * inch)
-
-
-# ---------------------------------------------------------------------------
-# Markdown section extraction
-# ---------------------------------------------------------------------------
 
 def extract_sections_from_markdown(markdown_content: str) -> dict:
     sections = {
@@ -271,11 +246,6 @@ def _split_blocks(content: str) -> list:
     flush()
     return blocks
 
-
-# ---------------------------------------------------------------------------
-# Mermaid / debate helpers
-# ---------------------------------------------------------------------------
-
 def _parse_mermaid_flow(mermaid_content: str) -> list:
     content = strip_markdown_fences(mermaid_content, keep_mermaid=True)
     lines   = [l.strip() for l in content.splitlines() if l.strip()]
@@ -354,10 +324,6 @@ def _parse_debate_blocks(content: str) -> list:
     return blocks
 
 
-# ---------------------------------------------------------------------------
-# Layout helpers
-# ---------------------------------------------------------------------------
-
 def _make_card(
     text: str,
     para_style,
@@ -408,11 +374,6 @@ def _add_numbered_cards(story: list, items: list, card_style, label_prefix: str)
         )
         story.append(KeepTogether([card, Spacer(1, 0.10 * inch)]))
 
-
-# ---------------------------------------------------------------------------
-# Footer
-# ---------------------------------------------------------------------------
-
 def _draw_footer(canvas, doc) -> None:
     canvas.saveState()
     canvas.setFont("Helvetica", 8.5)
@@ -429,10 +390,6 @@ def _draw_footer(canvas, doc) -> None:
     )
     canvas.restoreState()
 
-
-# ---------------------------------------------------------------------------
-# Public entry point
-# ---------------------------------------------------------------------------
 
 def build_discovery_pdf(markdown_content: str) -> bytes:
     """Build a clean, properly formatted PDF from discovery report markdown."""
@@ -451,9 +408,6 @@ def build_discovery_pdf(markdown_content: str) -> bytes:
         author="ResearchMind",
     )
 
-    # ------------------------------------------------------------------
-    # Styles
-    # ------------------------------------------------------------------
     styles = getSampleStyleSheet()
 
     title_style = ParagraphStyle(
@@ -534,9 +488,6 @@ def build_discovery_pdf(markdown_content: str) -> bytes:
         textColor=colors.HexColor("#111827"),
     )
 
-    # ------------------------------------------------------------------
-    # Build story
-    # ------------------------------------------------------------------
     sections = extract_sections_from_markdown(markdown_content)
     story    = []
 

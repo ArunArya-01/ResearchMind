@@ -4,10 +4,6 @@ import fitz  # PyMuPDF
 from typing import Dict, Any
 
 def parse_pdf(file_bytes: bytes) -> Dict[str, Any]:
-    """
-    Parses a PDF using PyMuPDF (fitz) to extract text, keywords, and metadata.
-    Returns: {"text": str, "keywords": list, "elements": {"pages": int, "references": int}}
-    """
     try:
         doc = fitz.open(stream=file_bytes, filetype="pdf")
     except Exception as e:

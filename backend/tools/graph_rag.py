@@ -6,9 +6,6 @@ class KnowledgeGraph:
         self.graph = nx.Graph()
 
     def ingest_scholar_results(self, results: List[Dict]):
-        """
-        Maps Semantic Scholar JSON results into nodes and edges.
-        """
         for paper in results:
             paper_id = paper.get('paperId', 'unknown')
             title = paper.get('title', 'Unknown Title')
@@ -28,10 +25,6 @@ class KnowledgeGraph:
                     self.graph.add_edge(paper_id, ref_id, relation='cites')
 
     def find_discovery_gap(self):
-        """
-        Identifies unconnected clusters, labeling them as the 'Red Anomaly'.
-        Returns data describing the discovery gap.
-        """
         components = list(nx.connected_components(self.graph))
         
         red_anomalies = []
