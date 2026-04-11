@@ -97,7 +97,23 @@ def clean_text(text: str) -> str:
     text = re.sub(r"[^\S\n]+", " ", text)
     text = "".join(ch for ch in text if ch == "\n" or ch.isprintable())
 
-    # --- Protect bold / italic BEFORE escaping ---
+    # --- Protect raw HTML tags and markdown bold / italic BEFORE escaping ---
+    html_placeholders = [
+        (re.compile(r"<\s*strong\s*>", re.IGNORECASE), "\x00B\x01"),
+        (re.compile(r"<\s*/\s*strong\s*>", re.IGNORECASE), "\x00/B\x01"),
+        (re.compile(r"<\s*b\s*>", re.IGNORECASE), "\x00B\x01"),
+        (re.compile(r"<\s*/\s*b\s*>", re.IGNORECASE), "\x00/B\x01"),
+        (re.compile(r"<\s*em\s*>", re.IGNORECASE), "\x00I\x01"),
+        (re.compile(r"<\s*/\s*em\s*>", re.IGNORECASE), "\x00/I\x01"),
+        (re.compile(r"<\s*i\s*>", re.IGNORECASE), "\x00I\x01"),
+        (re.compile(r"<\s*/\s*i\s*>", re.IGNORECASE), "\x00/I\x01"),
+        (re.compile(r"<\s*u\s*>", re.IGNORECASE), "\x00U\x01"),
+        (re.compile(r"<\s*/\s*u\s*>", re.IGNORECASE), "\x00/U\x01"),
+        (re.compile(r"<\s*br\s*/?\s*>", re.IGNORECASE), "\x00BR\x01"),
+    ]
+    for pattern, placeholder in html_placeholders:
+        text = pattern.sub(placeholder, text)
+
     placeholders = [
         (re.compile(r"\*\*\*(.+?)\*\*\*", re.DOTALL), "\x00BI\x01", "\x00/BI\x01"),   # bold-italic
         (re.compile(r"\*\*(.+?)\*\*",      re.DOTALL), "\x00B\x01",  "\x00/B\x01"),    # bold
@@ -115,7 +131,7 @@ def clean_text(text: str) -> str:
     # Escape ALL remaining < > & characters so they become safe XML entities
     text = escape(text, quote=False)
 
-    # Restore bold / italic placeholders as ReportLab XML tags
+    # Restore bold / italic / underline / line-break placeholders as ReportLab XML tags
     tag_map = {
         "\x00BI\x01":  "<b><i>",
         "\x00/BI\x01": "</i></b>",
@@ -123,6 +139,9 @@ def clean_text(text: str) -> str:
         "\x00/B\x01":  "</b>",
         "\x00I\x01":   "<i>",
         "\x00/I\x01":  "</i>",
+        "\x00U\x01":   "<u>",
+        "\x00/U\x01":  "</u>",
+        "\x00BR\x01":  "<br/>",
     }
     for ph, tag in tag_map.items():
         text = text.replace(ph, tag)
