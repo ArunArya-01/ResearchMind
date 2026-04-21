@@ -111,6 +111,8 @@ ResearchMind/
 5. The backend streams debate messages, scores, and final report content back to the UI.
 6. The report can then be downloaded as Markdown or rendered as a PDF.
 
+---
+
 ## Prerequisites
 
 Before running the project, make sure you have:
