@@ -1,4 +1,4 @@
-# ResearchMind
+# ResearchMind ![Last Updated](https://img.shields.io/badge/Last_Updated-April_2026-eeb901?style=flat)
 > **The next great discovery is hiding in the gap between two fields that have never spoken.**
 
 ---
